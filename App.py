@@ -329,85 +329,57 @@ df_static = pd.DataFrame(static_table_rows)
 # ---------------------------------------------------------------
 # 12. Fungsi Persiapan Visual
 # ---------------------------------------------------------------
-def prepare_visual_static(df_static):
-    """
-    Mengubah df_static (kolom: Slot, Vessel 1, Vessel 2, ...) 
-    menjadi DataFrame => [block, slot, occupant].
-    occupant = "A", atau "A+B", dsb.
-    """
-    rows = []
-    for i, row in df_static.iterrows():
-        slot_id = row["Slot"]  # e.g. "B03-1"
-        parts = slot_id.split("-")
-        block_name = parts[0]
-        slot_number = int(parts[1])
-        
-        occupant_list = []
-        for col in df_static.columns:
-            if col.startswith("Vessel "):
-                val = row[col]  # e.g. "A(10)"
-                if isinstance(val, str) and val.strip() != "":
-                    # Ambil nama vessel di depan "("
-                    vessel_name = val.split("(")[0]
-                    occupant_list.append(vessel_name)
-        
-        if len(occupant_list) == 0:
-            occupant_label = ""
-        elif len(occupant_list) == 1:
-            occupant_label = occupant_list[0]
-        else:
-            occupant_label = "+".join(occupant_list)
-        
-        rows.append({
-            "block": block_name,
-            "slot": slot_number,
-            "occupant": occupant_label
-        })
-    return pd.DataFrame(rows)
+import altair as alt
 
-def prepare_visual_dynamic(snapshot):
+def visualize_block_vertical(df, block_name):
     """
-    snapshot: list of dict => [ {slot_id, total, detail={A-C1:10, B-C2:5}}, ...]
-    Ubah jadi => [block, slot, occupant], occupant="A-C1+B-C2" kalau multi occupant.
+    Tampilkan 1 block secara vertikal:
+    - sumbu Y = slot (dari atas ke bawah)
+    - sumbu X = 1 kolom saja (kita pakai alt.value(0) atau dummy)
+    - warna = occupant
+    - tooltip menampilkan detail occupant
     """
-    rows = []
-    for slot_info in snapshot:
-        slot_id = slot_info["slot_id"]
-        parts = slot_id.split("-")
-        block_name = parts[0]
-        slot_number = int(parts[1])
-        detail = slot_info["detail"]
-        if len(detail) == 0:
-            occupant_label = ""
-        elif len(detail) == 1:
-            occupant_label = list(detail.keys())[0]  # misal "A-C1"
-        else:
-            occupant_label = "+".join(detail.keys())
-        rows.append({
-            "block": block_name,
-            "slot": slot_number,
-            "occupant": occupant_label
-        })
-    return pd.DataFrame(rows)
-
-def visualize_multiple_blocks(df, blocks, chart_title):
-    """
-    Tampilkan bbrp block sekaligus, y=block, x=slot, color=occupant.
-    """
-    df_sub = df[df["block"].isin(blocks)].copy()
-    df_sub["slot_str"] = df_sub["slot"].astype(str)
+    # Filter data untuk block yang diinginkan
+    df_block = df[df["block"] == block_name].copy()
     
-    chart = alt.Chart(df_sub).mark_rect(size=20).encode(
-        x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="ascending"), title="Slot"),
-        y=alt.Y("block:N", sort=blocks, title="Block"),
-        color=alt.Color("occupant:N", legend=alt.Legend(title="Vessel Assignments")),
-        tooltip=["block", "slot", "occupant"]
+    # Pastikan slot bertipe int, lalu urutkan
+    df_block["slot"] = df_block["slot"].astype(int)
+    df_block = df_block.sort_values("slot", ascending=False)  
+    # ascending=False => slot terbesar di atas atau di bawah, bisa diatur sesuai selera
+
+    # Kita butuh kolom 'dummy_x' agar altair punya sumbu X
+    df_block["dummy_x"] = 0
+    
+    # Buat chart
+    chart = alt.Chart(df_block).mark_rect(size=20).encode(
+        # X pakai nilai tetap (value(0)) atau field dummy_x
+        x=alt.X('dummy_x:Q', title="", axis=None),
+        y=alt.Y('slot:O', title="Slot", sort=None),
+        color=alt.Color(
+            'occupant:N',
+            legend=alt.Legend(title="Vessel Assignments")
+        ),
+        tooltip=['block', 'slot', 'occupant']
     ).properties(
-        width=600,
-        height=200,
-        title=chart_title
+        width=50,       # Lebar 1 block
+        height=300,     # Tinggi total block (silakan atur sesuai banyaknya slot)
+        title=block_name
     )
     return chart
+
+def visualize_blocks_side_by_side(df, blocks, title="Yard Layout"):
+    """
+    Buat chart gabungan (horizontal) untuk beberapa block.
+    Tiap block divisualkan secara vertikal via visualize_block_vertical.
+    """
+    charts = []
+    for blk in blocks:
+        c = visualize_block_vertical(df, blk)
+        charts.append(c)
+
+    # Gabungkan secara horizontal dengan spacing
+    final_chart = alt.hconcat(*charts, spacing=30).properties(title=title)
+    return final_chart
 
 # ---------------------------------------------------------------
 # 13. Tampilkan di Streamlit
