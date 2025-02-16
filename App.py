@@ -5,26 +5,24 @@ from datetime import date, timedelta
 
 # ---------------------------------------------------------------
 # 1. Data Awal
-#    Silakan isi sesuai data abati. "Cluster_Need" bisa di-override
-#    oleh aturan <1000 => 3, <1500 => 2 di bawah.
 # ---------------------------------------------------------------
 vessels_data = [
-    {"Vessel": "A", "Total_Containers": 3760, "Cluster_Need": 4, "ETA": date(2024,3,6), "Berth": "NP1"},
-    {"Vessel": "B", "Total_Containers": 842,  "Cluster_Need": 2, "ETA": date(2024,3,6), "Berth": "NP1"},
-    {"Vessel": "C", "Total_Containers": 539,  "Cluster_Need": 2, "ETA": date(2024,3,7), "Berth": "NP1"},
-    {"Vessel": "D", "Total_Containers": 1021, "Cluster_Need": 3, "ETA": date(2024,3,7), "Berth": "NP1"},
-    {"Vessel": "E", "Total_Containers": 1350, "Cluster_Need": 4, "ETA": date(2024,3,8), "Berth": "NP1"},
-    {"Vessel": "F", "Total_Containers": 639,  "Cluster_Need": 2, "ETA": date(2024,3,8), "Berth": "NP1"},
-    {"Vessel": "G", "Total_Containers": 1091, "Cluster_Need": 2, "ETA": date(2024,3,9), "Berth": "NP2"},
-    {"Vessel": "H", "Total_Containers": 1002, "Cluster_Need": 3, "ETA": date(2024,3,9), "Berth": "NP2"},
-    {"Vessel": "I", "Total_Containers": 1019, "Cluster_Need": 2, "ETA": date(2024,3,10), "Berth": "NP2"},
-    {"Vessel": "J", "Total_Containers": 983,  "Cluster_Need": 2, "ETA": date(2024,3,10), "Berth": "NP2"},
-    {"Vessel": "K", "Total_Containers": 667,  "Cluster_Need": 1, "ETA": date(2024,3,11), "Berth": "NP3"},
-    {"Vessel": "L", "Total_Containers": 952,  "Cluster_Need": 2, "ETA": date(2024,3,11), "Berth": "NP3"},
-    {"Vessel": "M", "Total_Containers": 1302, "Cluster_Need": 2, "ETA": date(2024,3,12), "Berth": "NP1"},
-    {"Vessel": "N", "Total_Containers": 538,  "Cluster_Need": 1, "ETA": date(2024,3,12), "Berth": "NP2"},
-    {"Vessel": "O", "Total_Containers": 1204, "Cluster_Need": 3, "ETA": date(2024,3,12), "Berth": "NP3"},
-    {"Vessel": "P", "Total_Containers": 1298, "Cluster_Need": 3, "ETA": date(2024,3,12), "Berth": "NP1"},
+    {"Vessel": "A", "Total_Containers": 3760, "Cluster_Need": 4, "ETA": date(2024, 2, 6), "Berth": "NP1"},
+    {"Vessel": "B", "Total_Containers": 842,  "Cluster_Need": 2, "ETA": date(2024, 2, 6), "Berth": "NP1"},
+    {"Vessel": "C", "Total_Containers": 539,  "Cluster_Need": 2, "ETA": date(2024, 2, 7), "Berth": "NP1"},
+    {"Vessel": "D", "Total_Containers": 1021, "Cluster_Need": 3, "ETA": date(2024, 2, 7), "Berth": "NP1"},
+    {"Vessel": "E", "Total_Containers": 1350, "Cluster_Need": 4, "ETA": date(2024, 2, 8), "Berth": "NP1"},
+    {"Vessel": "F", "Total_Containers": 639,  "Cluster_Need": 2, "ETA": date(2024, 2, 8), "Berth": "NP1"},
+    {"Vessel": "G", "Total_Containers": 1091, "Cluster_Need": 2, "ETA": date(2024, 2, 9), "Berth": "NP2"},
+    {"Vessel": "H", "Total_Containers": 1002, "Cluster_Need": 3, "ETA": date(2024, 2, 9), "Berth": "NP2"},
+    {"Vessel": "I", "Total_Containers": 1019, "Cluster_Need": 2, "ETA": date(2024, 2, 10), "Berth": "NP2"},
+    {"Vessel": "J", "Total_Containers": 983,  "Cluster_Need": 2, "ETA": date(2024, 2, 10), "Berth": "NP2"},
+    {"Vessel": "K", "Total_Containers": 667,  "Cluster_Need": 1, "ETA": date(2024, 2, 11), "Berth": "NP3"},
+    {"Vessel": "L", "Total_Containers": 952,  "Cluster_Need": 2, "ETA": date(2024, 2, 11), "Berth": "NP3"},
+    {"Vessel": "M", "Total_Containers": 1302, "Cluster_Need": 2, "ETA": date(2024, 2, 12), "Berth": "NP1"},
+    {"Vessel": "N", "Total_Containers": 538,  "Cluster_Need": 1, "ETA": date(2024, 2, 12), "Berth": "NP2"},
+    {"Vessel": "O", "Total_Containers": 1204, "Cluster_Need": 3, "ETA": date(2024, 2, 12), "Berth": "NP3"},
+    {"Vessel": "P", "Total_Containers": 1298, "Cluster_Need": 3, "ETA": date(2024, 2, 12), "Berth": "NP1"},
 ]
 
 # ---------------------------------------------------------------
@@ -54,10 +52,10 @@ def get_block_prefix_order(berth):
     elif berth == "NP3":
         return ["C", "B", "A"]
     else:
-        return ["A", "B", "C"]  # default
+        return ["A", "B", "C"]
 
 # ---------------------------------------------------------------
-# 3. Membuat struktur all_slots
+# 3. Membuat struktur all_slots (untuk simulasi dinamis)
 # ---------------------------------------------------------------
 all_slots = []
 for block, info in blocks_info.items():
@@ -67,7 +65,7 @@ for block, info in blocks_info.items():
             "slot_id": slot_id,
             "block": block,
             "capacity_per_slot": info["max_per_slot"],
-            "containers": {}  # cluster_label -> qty
+            "containers": {}  # cluster_label -> qty (dipakai pada simulasi dinamis)
         })
 
 # ---------------------------------------------------------------
@@ -95,13 +93,13 @@ CRANE_MOVE_PER_HOUR = 28
 CRANE_COUNT = 2.7
 
 def get_loading_days(total_containers):
-    """Hitung durasi loading dalam satuan 'hari' (dibulatkan ke atas)."""
+    """Hitung durasi loading (hari) berdasarkan kapasitas crane."""
     move_per_day = CRANE_MOVE_PER_HOUR * CRANE_COUNT * 24
     days = total_containers / move_per_day
     return math.ceil(days)
 
 # ---------------------------------------------------------------
-# 6. Buat timeline (day-by-day)
+# 6. Buat timeline (day-by-day) untuk simulasi dinamis
 # ---------------------------------------------------------------
 vessels_data = sorted(vessels_data, key=lambda x: x["ETA"])
 min_eta = min(v["ETA"] for v in vessels_data)
@@ -116,16 +114,13 @@ while cur <= end_date:
     cur += timedelta(days=1)
 
 # ---------------------------------------------------------------
-# 7. Siapkan vessel_states untuk track jadwal, cluster, dsb.
+# 7. Siapkan vessel_states untuk simulasi dinamis
 # ---------------------------------------------------------------
 vessel_states = {}
 for v in vessels_data:
     v_name = v["Vessel"]
     total_c = math.ceil(v["Total_Containers"])
-    # override cluster jika perlu
     needed_cluster = determine_cluster_need(total_c, v["Cluster_Need"])
-    
-    # Bagi cluster
     base_csize = total_c // needed_cluster
     rem = total_c % needed_cluster
     clusters = []
@@ -134,14 +129,12 @@ for v in vessels_data:
         clusters.append({
             "cluster_label": f"{v_name}-C{i+1}",
             "size": size_,
-            "remain": size_,  # sisa belum 'datang' + belum 'termuat'
+            "remain": size_,  # sisa yang belum dialokasikan/termuat
         })
-    
     eta = v["ETA"]
     load_days = get_loading_days(total_c)
     start_load = eta
     end_load = eta + timedelta(days=load_days - 1)
-    
     vessel_states[v_name] = {
         "Vessel": v_name,
         "Total": total_c,
@@ -156,13 +149,11 @@ for v in vessels_data:
     }
 
 # ---------------------------------------------------------------
-# 8. Hindari Clash ETA < 3 Hari
+# 8. Hindari Clash ETA < 3 Hari (simulasi dinamis)
 # ---------------------------------------------------------------
 block_usage = {}
 
 def is_clashing(this_vessel, block, states, margin_days=3):
-    """Cek apakah menempatkan 'this_vessel' ke block akan clash 
-       dengan vessel lain di block yang ETA-nya beda < margin_days."""
     if block not in block_usage:
         return False
     this_eta = states[this_vessel]["ETA"]
@@ -172,39 +163,30 @@ def is_clashing(this_vessel, block, states, margin_days=3):
     return False
 
 def mark_block_usage(vessel, block):
-    """Tandai block digunakan oleh vessel."""
     v_eta = vessel_states[vessel]["ETA"]
     if block not in block_usage:
         block_usage[block] = []
     block_usage[block].append((vessel, v_eta))
 
 # ---------------------------------------------------------------
-# 9. Fungsi Alokasi Container (Preferensi Block + Clash Check)
+# 9. Fungsi Alokasi Dinamis dengan Preferensi Block + Clash Check
 # ---------------------------------------------------------------
 def allocate_with_preference(cluster_label, qty, vessel_name):
-    """Alokasikan 'qty' kontainer ke slot-slot 
-       sesuai preferensi block (berdasarkan berth),
-       hindari block yang clash."""
     berth = vessel_states[vessel_name]["Berth"]
     prefix_order = get_block_prefix_order(berth)
     remaining = qty
-    
     for pfx in prefix_order:
         if remaining <= 0:
             break
-        # Kumpulkan slot2 di block prefix pfx
         block_slots_map = {}
         for slot in all_slots:
             if slot["block"].startswith(pfx):
                 block_slots_map.setdefault(slot["block"], []).append(slot)
-        
-        # Sort block_name
         for block_name in sorted(block_slots_map.keys()):
             if remaining <= 0:
                 break
             if is_clashing(vessel_name, block_name, vessel_states):
                 continue
-            # isi slot2 di block_name
             for slot in block_slots_map[block_name]:
                 if remaining <= 0:
                     break
@@ -215,17 +197,14 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
                     slot["containers"].setdefault(cluster_label, 0)
                     slot["containers"][cluster_label] += can_fill
                     remaining -= can_fill
-            
-            # kalau minimal 1 container teralokasi di block ini, tandai usage
             if remaining < qty:
                 mark_block_usage(vessel_name, block_name)
     return remaining
 
 # ---------------------------------------------------------------
-# 10. Fungsi Remove Container (Loading)
+# 10. Fungsi Remove Container (Loading) untuk simulasi dinamis
 # ---------------------------------------------------------------
 def remove_cluster_containers(cluster_label, qty):
-    """Mengurangi 'qty' kontainer cluster_label dari yard."""
     remaining = qty
     for slot in all_slots:
         if remaining <= 0:
@@ -240,22 +219,17 @@ def remove_cluster_containers(cluster_label, qty):
     return remaining
 
 # ---------------------------------------------------------------
-# 11. Kita juga mau menyimpan "snapshot" yard di setiap hari
+# 11. Simulasi Dinamis Day-by-Day + Snapshot Yard
 # ---------------------------------------------------------------
-yard_snapshots = {}  # key = date, value = list of slot usage
-
-# ---------------------------------------------------------------
-# 12. Simulasi Day-by-Day
-# ---------------------------------------------------------------
+yard_snapshots = {}  # key: date, value: snapshot (list of slot usage)
 log_events = []
 
 for d in all_days:
-    # 1. Tandai kapal yg loading selesai jika d > end_load
+    # Tandai kapal yang sudah selesai loading (jika d > end_load)
     for vessel_name, v_state in vessel_states.items():
         if not v_state["done"] and d > v_state["end_load"]:
             v_state["done"] = True
-    
-    # 2. Receiving
+    # Receiving
     for vessel_name, v_state in vessel_states.items():
         if v_state["done"]:
             continue
@@ -272,7 +246,6 @@ for d in all_days:
                         if allocated > 0:
                             log_events.append((d, f"[RECV] {allocated} to {cluster['cluster_label']}"))
         elif d == v_state["ETA"]:
-            # masukkan sisa remain
             for cluster in v_state["Clusters"]:
                 if cluster["remain"] > 0:
                     leftover = allocate_with_preference(cluster["cluster_label"], cluster["remain"], vessel_name)
@@ -280,8 +253,7 @@ for d in all_days:
                     cluster["remain"] -= allocated
                     if allocated > 0:
                         log_events.append((d, f"[RECV-FINAL] {allocated} to {cluster['cluster_label']}"))
-
-    # 3. Loading
+    # Loading
     for vessel_name, v_state in vessel_states.items():
         if v_state["done"]:
             continue
@@ -294,18 +266,16 @@ for d in all_days:
                 removed = portion_out - leftover_remove
                 if removed > 0:
                     log_events.append((d, f"[LOAD] {removed} from {cluster['cluster_label']}"))
-    
-    # 4. Jika kapal end_load == d, tandai done
+    # Tandai selesai loading jika d == end_load
     for vessel_name, v_state in vessel_states.items():
         if not v_state["done"] and v_state["end_load"] == d:
             v_state["done"] = True
             log_events.append((d, f"{vessel_name} finished loading."))
-
-    # 5. Simpan snapshot yard di akhir hari d
+    # Simpan snapshot yard di akhir hari d
     snapshot = []
     for slot in all_slots:
         total_in_slot = sum(slot["containers"].values())
-        detail_dict = dict(slot["containers"])  # salin isi containers
+        detail_dict = dict(slot["containers"])
         snapshot.append({
             "slot_id": slot["slot_id"],
             "total": total_in_slot,
@@ -314,22 +284,19 @@ for d in all_days:
     yard_snapshots[d] = snapshot
 
 # ---------------------------------------------------------------
-# 13. Tampilkan di Streamlit
+# 12. Tampilan Dynamic Allocation di Streamlit
 # ---------------------------------------------------------------
 st.title("Dynamic Yard Allocation (Timeline) - Advanced with Daily Snapshots")
 st.write("""
-**Fitur**:
-1. Minimal cluster: <1000 => 3, <1500 => 2, sisanya pakai data.  
-2. Preferensi block: 
-   - NP1 => A -> B -> C  
-   - NP2 => B -> A -> C  
-   - NP3 => C -> B -> A  
-3. Hindari clash ETA < 3 hari di block yang sama.  
-4. Timeline day-by-day: receiving ±12%/hari (7 hari), loading => slot dibebaskan.  
-5. **Snapshot harian**: kita bisa lihat kondisi yard di hari tertentu.
+**Fitur Dynamic:**
+1. Minimal cluster: <1000 => 3, <1500 => 2, sisanya pakai data.
+2. Preferensi block: NP1 ⇒ A → B → C, NP2 ⇒ B → A → C, NP3 ⇒ C → B → A.
+3. Hindari clash ETA < 3 hari di block yang sama.
+4. Timeline day-by-day: receiving ±12%/hari (7 hari), loading → slot dibebaskan.
+5. Snapshot harian: pilih tanggal untuk lihat kondisi yard.
 """)
 
-# 13.1 Data Vessels
+# 12.1 Tampilkan Data Vessels
 df_vessels = pd.DataFrame([
     {
         "Vessel": v["Vessel"],
@@ -344,26 +311,21 @@ df_vessels = pd.DataFrame([
 st.subheader("1. Data Vessels")
 st.dataframe(df_vessels)
 
-# 13.2 Log Events
+# 12.2 Tampilkan Log Events
 df_log = pd.DataFrame(log_events, columns=["Date", "Event"])
-df_log.sort_values(by=["Date","Event"], inplace=True)
+df_log.sort_values(by=["Date", "Event"], inplace=True)
 df_log.reset_index(drop=True, inplace=True)
 st.subheader("2. Log Events (Chronological)")
 st.dataframe(df_log)
 
-# 13.3 Pilih Hari untuk Lihat Snapshot Yard
-st.subheader("3. Lihat Snapshot Yard di Hari Tertentu")
-
-day_choice = st.selectbox(
-    "Pilih Tanggal",
-    sorted(list(yard_snapshots.keys()))
-)
-
+# 12.3 Pilih Hari untuk Snapshot Yard
+st.subheader("3. Snapshot Yard (Dynamic)")
+day_choice = st.selectbox("Pilih Tanggal", sorted(list(yard_snapshots.keys())))
 chosen_snapshot = yard_snapshots[day_choice]
 rows = []
 for s in chosen_snapshot:
     if s["total"] > 0:
-        detail_str = ", ".join(f"{k}({v})" for k,v in s["detail"].items())
+        detail_str = ", ".join(f"{k}({v})" for k, v in s["detail"].items())
     else:
         detail_str = ""
     rows.append({
@@ -372,10 +334,72 @@ for s in chosen_snapshot:
         "Detail": detail_str
     })
 df_chosen = pd.DataFrame(rows)
-st.dataframe(df_chosen[df_chosen["Total_Used"]>0].reset_index(drop=True))
+st.dataframe(df_chosen[df_chosen["Total_Used"] > 0].reset_index(drop=True))
 
 st.write("""
-**Catatan**:
-- Kalau "Total_Used" kosong di semua slot pada hari tertentu, artinya yard sedang kosong hari itu.
-- Semakin dekat ke akhir timeline, mungkin yard benar-benar kosong karena semua kapal sudah selesai muat.
+**Catatan Dynamic:**
+- Jika "Total_Used" kosong di suatu hari, artinya yard sedang kosong.
+- Di akhir timeline, kemungkinan yard sudah kosong karena semua kapal selesai muat.
+""")
+
+# ---------------------------------------------------------------
+# 13. Static Allocation (Overlapping Method)
+# ---------------------------------------------------------------
+# Kita buat salinan baru static_slots (tanpa simulasi timeline)
+static_slots = []
+for block, info in blocks_info.items():
+    for s in range(1, info["slots"] + 1):
+        slot_id = f"{block}-{s}"
+        static_slots.append({
+            "slot_id": slot_id,
+            "block": block,
+            "capacity_per_slot": info["max_per_slot"],
+            "allocations": []  # list of (vessel_name, allocated_amount)
+        })
+
+# Algoritma Static Allocation: untuk tiap vessel, alokasikan seluruh container ke slot yang tersedia.
+vessels_sorted = sorted(vessels_data, key=lambda x: x["ETA"])
+for v in vessels_sorted:
+    remaining = math.ceil(v["Total_Containers"])
+    vessel_name = v["Vessel"]
+    for slot in static_slots:
+        # Hitung kapasitas tersisa di slot
+        used = sum(alloc[1] for alloc in slot["allocations"])
+        free_cap = slot["capacity_per_slot"] - used
+        if free_cap > 0:
+            allocate_amt = min(free_cap, remaining)
+            slot["allocations"].append((vessel_name, allocate_amt))
+            remaining -= allocate_amt
+        if remaining <= 0:
+            break
+
+# Buat tabel static allocation: kolom "Slot", "Vessel 1", "Vessel 2", dst.
+max_allocations = max(len(slot["allocations"]) for slot in static_slots)
+static_table_rows = []
+for slot in static_slots:
+    row = {"Slot": slot["slot_id"]}
+    for i in range(max_allocations):
+        col_name = f"Vessel {i+1}"
+        if i < len(slot["allocations"]):
+            vessel_alloc, amt = slot["allocations"][i]
+            row[col_name] = f"{vessel_alloc}({amt})"
+        else:
+            row[col_name] = ""
+    static_table_rows.append(row)
+df_static = pd.DataFrame(static_table_rows)
+
+# ---------------------------------------------------------------
+# 14. Tampilkan Static Allocation Table di Streamlit
+# ---------------------------------------------------------------
+st.subheader("Static Allocation Table (Overlapping)")
+st.write("""
+Tabel ini mengalokasikan seluruh container secara statis menggunakan metode overlapping (misalnya, satu slot bisa berisi Vessel 1 dan Vessel 2).
+""")
+st.dataframe(df_static)
+
+st.write("""
+**Catatan Static:**
+- Pada tabel ini, setiap slot memiliki kapasitas 30 container.
+- Jika suatu slot tidak penuh, vessel berikutnya dapat mengisi sisa kapasitas tersebut.
+- Tabel ini tidak memperhitungkan timeline; seluruh vessel dialokasikan secara statis.
 """)
