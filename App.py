@@ -45,6 +45,7 @@ blocks_info = {
 }
 
 def get_block_prefix_order(berth):
+    """Preferensi block prefix berdasarkan Berth."""
     if berth == "NP1":
         return ["A", "B", "C"]
     elif berth == "NP2":
@@ -72,6 +73,7 @@ for block, info in blocks_info.items():
 # 4. Aturan Minimal Cluster
 # ---------------------------------------------------------------
 def determine_cluster_need(total_from_data, cluster_from_data):
+    """<1000 => 3 cluster, <1500 => 2 cluster, else pakai cluster_from_data."""
     if total_from_data < 1000:
         return 3
     elif total_from_data < 1500:
@@ -88,6 +90,7 @@ CRANE_MOVE_PER_HOUR = 28
 CRANE_COUNT = 2.7
 
 def get_loading_days(total_containers):
+    """Durasi loading (hari) ~ total / (28*2.7*24)."""
     move_per_day = CRANE_MOVE_PER_HOUR * CRANE_COUNT * 24
     days = total_containers / move_per_day
     return math.ceil(days)
@@ -115,6 +118,7 @@ for v in vessels_data:
     v_name = v["Vessel"]
     total_c = math.ceil(v["Total_Containers"])
     needed_cluster = determine_cluster_need(total_c, v["Cluster_Need"])
+    
     base_csize = total_c // needed_cluster
     rem = total_c % needed_cluster
     
@@ -284,7 +288,6 @@ for d in all_days:
 # ---------------------------------------------------------------
 # 11. Static Allocation
 # ---------------------------------------------------------------
-# Kita buat salinan slot (tanpa timeline)
 static_slots = []
 for block, info in blocks_info.items():
     for s in range(1, info["slots"] + 1):
@@ -293,10 +296,9 @@ for block, info in blocks_info.items():
             "slot_id": slot_id,
             "block": block,
             "capacity_per_slot": info["max_per_slot"],
-            "allocations": []  # list of (vessel_name, allocated_amt)
+            "allocations": []
         })
 
-# Alokasikan vessel statis (overlapping)
 vessels_sorted = sorted(vessels_data, key=lambda x: x["ETA"])
 for v in vessels_sorted:
     remaining = math.ceil(v["Total_Containers"])
@@ -311,7 +313,6 @@ for v in vessels_sorted:
         if remaining <= 0:
             break
 
-# Buat dataframe "Slot, Vessel1, Vessel2, ..." => df_static
 max_alloc = max(len(s["allocations"]) for s in static_slots)
 static_table_rows = []
 for s in static_slots:
@@ -327,68 +328,137 @@ for s in static_slots:
 df_static = pd.DataFrame(static_table_rows)
 
 # ---------------------------------------------------------------
-# 12. Fungsi Persiapan Visual
+# 12. Fungsi Persiapan Visual (Horizontal Chart)
 # ---------------------------------------------------------------
-import altair as alt
+def prepare_visual_static(df_static):
+    """
+    df_static: kolom [Slot, Vessel 1, Vessel 2, ...]
+    Return df: [block, slot, occupant]
+    occupant = "A", atau "A+B", dll.
+    """
+    rows = []
+    for i, row in df_static.iterrows():
+        slot_id = row["Slot"]
+        parts = slot_id.split("-")
+        block_name = parts[0]
+        slot_number = int(parts[1])
+        
+        occupant_list = []
+        for col in df_static.columns:
+            if col.startswith("Vessel "):
+                val = row[col]
+                if isinstance(val, str) and val.strip() != "":
+                    vessel_name = val.split("(")[0]
+                    occupant_list.append(vessel_name)
+        
+        if len(occupant_list) == 0:
+            occupant_label = ""
+        elif len(occupant_list) == 1:
+            occupant_label = occupant_list[0]
+        else:
+            occupant_label = "+".join(occupant_list)
+        
+        rows.append({
+            "block": block_name,
+            "slot": slot_number,
+            "occupant": occupant_label
+        })
+    return pd.DataFrame(rows)
 
+def prepare_visual_dynamic(snapshot):
+    """
+    snapshot: list of dict => [ {slot_id, detail={A-C1:10, B-C2:5}}, ...]
+    Return df: [block, slot, occupant]
+    occupant = "A-C1+B-C2" kalau multi occupant
+    """
+    rows = []
+    for slot_info in snapshot:
+        slot_id = slot_info["slot_id"]
+        parts = slot_id.split("-")
+        block_name = parts[0]
+        slot_number = int(parts[1])
+        detail = slot_info["detail"]
+        if len(detail) == 0:
+            occupant_label = ""
+        elif len(detail) == 1:
+            occupant_label = list(detail.keys())[0]
+        else:
+            occupant_label = "+".join(detail.keys())
+        rows.append({
+            "block": block_name,
+            "slot": slot_number,
+            "occupant": occupant_label
+        })
+    return pd.DataFrame(rows)
+
+def visualize_multiple_blocks(df, blocks, chart_title):
+    """
+    Tampilkan bbrp block (horizontal chart):
+    - x=slot, y=block, color=occupant
+    """
+    df_sub = df[df["block"].isin(blocks)].copy()
+    df_sub["slot_str"] = df_sub["slot"].astype(str)
+    
+    chart = alt.Chart(df_sub).mark_rect(size=20).encode(
+        x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="ascending"), title="Slot"),
+        y=alt.Y("block:N", sort=blocks, title="Block"),
+        color=alt.Color("occupant:N", legend=alt.Legend(title="Vessel Assignments")),
+        tooltip=["block", "slot", "occupant"]
+    ).properties(
+        width=600,
+        height=200,
+        title=chart_title
+    )
+    return chart
+
+# ---------------------------------------------------------------
+# 13. Fungsi Visual (Vertical Chart) - side by side
+# ---------------------------------------------------------------
 def visualize_block_vertical(df, block_name):
     """
     Tampilkan 1 block secara vertikal:
-    - sumbu Y = slot (dari atas ke bawah)
-    - sumbu X = 1 kolom saja (kita pakai alt.value(0) atau dummy)
-    - warna = occupant
-    - tooltip menampilkan detail occupant
+    - sumbu Y = slot (top->bottom)
+    - x = 1 kolom (dummy)
+    - color=occupant
     """
-    # Filter data untuk block yang diinginkan
     df_block = df[df["block"] == block_name].copy()
-    
-    # Pastikan slot bertipe int, lalu urutkan
     df_block["slot"] = df_block["slot"].astype(int)
-    df_block = df_block.sort_values("slot", ascending=False)  
-    # ascending=False => slot terbesar di atas atau di bawah, bisa diatur sesuai selera
-
-    # Kita butuh kolom 'dummy_x' agar altair punya sumbu X
+    # Urutkan slot descending atau ascending sesuai selera
+    df_block = df_block.sort_values("slot", ascending=False)
+    
     df_block["dummy_x"] = 0
     
-    # Buat chart
     chart = alt.Chart(df_block).mark_rect(size=20).encode(
-        # X pakai nilai tetap (value(0)) atau field dummy_x
-        x=alt.X('dummy_x:Q', title="", axis=None),
+        x=alt.X('dummy_x:Q', axis=None),
         y=alt.Y('slot:O', title="Slot", sort=None),
-        color=alt.Color(
-            'occupant:N',
-            legend=alt.Legend(title="Vessel Assignments")
-        ),
+        color=alt.Color('occupant:N', legend=alt.Legend(title="Vessel Assignments")),
         tooltip=['block', 'slot', 'occupant']
     ).properties(
-        width=50,       # Lebar 1 block
-        height=300,     # Tinggi total block (silakan atur sesuai banyaknya slot)
+        width=50,
+        height=300,
         title=block_name
     )
     return chart
 
 def visualize_blocks_side_by_side(df, blocks, title="Yard Layout"):
     """
-    Buat chart gabungan (horizontal) untuk beberapa block.
-    Tiap block divisualkan secara vertikal via visualize_block_vertical.
+    Gabungkan chart block secara horizontal, 
+    tiap block kolom sendiri, slot vertikal.
     """
     charts = []
     for blk in blocks:
         c = visualize_block_vertical(df, blk)
         charts.append(c)
-
-    # Gabungkan secara horizontal dengan spacing
     final_chart = alt.hconcat(*charts, spacing=30).properties(title=title)
     return final_chart
 
 # ---------------------------------------------------------------
-# 13. Tampilkan di Streamlit
+# 14. Streamlit Layout
 # ---------------------------------------------------------------
-st.title("Container Yard Allocation with Static & Dynamic Visualization")
+st.title("Container Yard Allocation - Dynamic & Static + Visuals")
 
-# --- Bagian 1: Dynamic
+# Bagian Dynamic
 st.header("1. Dynamic Allocation (Timeline)")
-
 df_vessels = pd.DataFrame([
     {
         "Vessel": v["Vessel"],
@@ -400,7 +470,7 @@ df_vessels = pd.DataFrame([
     }
     for v in vessels_data
 ])
-st.subheader("1.1 Data Vessels (Sorted by ETA)")
+st.subheader("1.1 Data Vessels")
 st.dataframe(df_vessels)
 
 st.subheader("1.2 Log Events")
@@ -408,35 +478,49 @@ df_log = pd.DataFrame(log_events, columns=["Date", "Event"]).sort_values(by=["Da
 df_log.reset_index(drop=True, inplace=True)
 st.dataframe(df_log)
 
-st.subheader("1.3 Visualize Yard (Select Day)")
-day_choice = st.selectbox("Choose a Day for Dynamic Snapshot", sorted(list(yard_snapshots.keys())))
+st.subheader("1.3 Visualize Dynamic Yard")
+
+day_choice = st.selectbox("Pilih Tanggal (Snapshot)", sorted(yard_snapshots.keys()))
 chosen_snapshot = yard_snapshots[day_choice]
 df_dynamic_visual = prepare_visual_dynamic(chosen_snapshot)
 
-# Misalnya abati mau menampilkan block B03, B04, C01, C02, C03
-blocks_to_show = [
-    "A01", "A02", "A03", "A04", "A05",
-    "B01", "B02", "B03", "B04",
-    "C01", "C02", "C03"
-]
-chart_dynamic = visualize_multiple_blocks(df_dynamic_visual, blocks_to_show, f"Dynamic Yard - {day_choice}")
-st.altair_chart(chart_dynamic, use_container_width=True)
+# Pilih metode visual: horizontal or vertical
+visual_method = st.radio("Visual Method", ["Horizontal", "Vertical"], index=0)
 
-# --- Bagian 2: Static
+# Pilih blocks
+all_blocks = sorted(list(blocks_info.keys()))  # ["A01","A02",...,"C03"]
+selected_blocks = st.multiselect("Pilih Block", all_blocks, default=["B03","B04","C01","C02","C03"])
+
+if visual_method == "Horizontal":
+    chart_dyn = visualize_multiple_blocks(df_dynamic_visual, selected_blocks, f"Dynamic Yard {day_choice}")
+    st.altair_chart(chart_dyn, use_container_width=True)
+else:
+    chart_dyn2 = visualize_blocks_side_by_side(df_dynamic_visual, selected_blocks, title=f"Dynamic Yard {day_choice}")
+    st.altair_chart(chart_dyn2, use_container_width=True)
+
+# Bagian Static
 st.header("2. Static Allocation (Overlapping)")
-
 st.subheader("2.1 Tabel Alokasi Static")
-st.write("Setiap slot memiliki kapasitas 30 container, vessel dialokasikan berurutan sampai penuh.")
 st.dataframe(df_static)
 
 st.subheader("2.2 Visualize Static Yard")
 df_static_visual = prepare_visual_static(df_static)
-chart_static = visualize_multiple_blocks(df_static_visual, blocks_to_show, "Static Yard")
-st.altair_chart(chart_static, use_container_width=True)
+
+visual_method_static = st.radio("Visual Method (Static)", ["Horizontal", "Vertical"], index=0, key="static_radio")
+selected_blocks_static = st.multiselect("Pilih Block (Static)", all_blocks, default=["B03","B04","C01","C02","C03"], key="static_blocks")
+
+if visual_method_static == "Horizontal":
+    chart_static = visualize_multiple_blocks(df_static_visual, selected_blocks_static, "Static Yard Layout")
+    st.altair_chart(chart_static, use_container_width=True)
+else:
+    chart_static2 = visualize_blocks_side_by_side(df_static_visual, selected_blocks_static, title="Static Yard Layout")
+    st.altair_chart(chart_static2, use_container_width=True)
 
 st.write("""
-**Catatan**:
-- Pada **Static**: Tidak ada timeline, semua kontainer dialokasikan sekaligus. 
-  Jika satu slot masih sisa kapasitas, vessel berikutnya bisa mengisi.
-- Pada **Dynamic**: Slot dibebaskan kembali setelah kapal selesai muat (sesuai timeline).
+**Keterangan**:
+- "Horizontal" => sumbu X=slot, sumbu Y=block (tiap block tampak baris).  
+- "Vertical" => tiap block jadi kolom tersendiri, slot ditampilkan dari atas ke bawah.  
+- Bisa pilih block yang mau ditampilkan.  
+- Dynamic => menampilkan snapshot di hari tertentu.  
+- Static => menampilkan hasil alokasi sekaligus (tanpa timeline).
 """)
