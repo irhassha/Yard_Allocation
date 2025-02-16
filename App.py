@@ -9,22 +9,22 @@ from datetime import date, timedelta
 #    oleh aturan <1000 => 3, <1500 => 2 di bawah.
 # ---------------------------------------------------------------
 vessels_data = [
-    {"Vessel": "A", "Total_Containers": 3760, "Cluster_Need": 4, "ETA": date(2024,2,6), "Berth": "NP1"},
-    {"Vessel": "B", "Total_Containers": 842,  "Cluster_Need": 2, "ETA": date(2024,2,6), "Berth": "NP1"},
-    {"Vessel": "C", "Total_Containers": 539,  "Cluster_Need": 2, "ETA": date(2024,2,7), "Berth": "NP1"},
-    {"Vessel": "D", "Total_Containers": 1021, "Cluster_Need": 3, "ETA": date(2024,2,7), "Berth": "NP1"},
-    {"Vessel": "E", "Total_Containers": 1350, "Cluster_Need": 4, "ETA": date(2024,2,8), "Berth": "NP1"},
-    {"Vessel": "F", "Total_Containers": 639,  "Cluster_Need": 2, "ETA": date(2024,2,8), "Berth": "NP1"},
-    {"Vessel": "G", "Total_Containers": 1091, "Cluster_Need": 2, "ETA": date(2024,2,9), "Berth": "NP2"},
-    {"Vessel": "H", "Total_Containers": 1002, "Cluster_Need": 3, "ETA": date(2024,2,9), "Berth": "NP2"},
-    {"Vessel": "I", "Total_Containers": 1019, "Cluster_Need": 2, "ETA": date(2024,2,10), "Berth": "NP2"},
-    {"Vessel": "J", "Total_Containers": 983,  "Cluster_Need": 2, "ETA": date(2024,2,10), "Berth": "NP2"},
-    {"Vessel": "K", "Total_Containers": 667,  "Cluster_Need": 1, "ETA": date(2024,2,11), "Berth": "NP3"},
-    {"Vessel": "L", "Total_Containers": 952,  "Cluster_Need": 2, "ETA": date(2024,2,11), "Berth": "NP3"},
-    {"Vessel": "M", "Total_Containers": 1302, "Cluster_Need": 2, "ETA": date(2024,2,12), "Berth": "NP1"},
-    {"Vessel": "N", "Total_Containers": 538,  "Cluster_Need": 1, "ETA": date(2024,2,12), "Berth": "NP2"},
-    {"Vessel": "O", "Total_Containers": 1204, "Cluster_Need": 3, "ETA": date(2024,2,12), "Berth": "NP3"},
-    {"Vessel": "P", "Total_Containers": 1298, "Cluster_Need": 3, "ETA": date(2024,2,12), "Berth": "NP1"},
+    {"Vessel": "A", "Total_Containers": 3760, "Cluster_Need": 4, "ETA": date(2024,3,6), "Berth": "NP1"},
+    {"Vessel": "B", "Total_Containers": 842,  "Cluster_Need": 2, "ETA": date(2024,3,6), "Berth": "NP1"},
+    {"Vessel": "C", "Total_Containers": 539,  "Cluster_Need": 2, "ETA": date(2024,3,7), "Berth": "NP1"},
+    {"Vessel": "D", "Total_Containers": 1021, "Cluster_Need": 3, "ETA": date(2024,3,7), "Berth": "NP1"},
+    {"Vessel": "E", "Total_Containers": 1350, "Cluster_Need": 4, "ETA": date(2024,3,8), "Berth": "NP1"},
+    {"Vessel": "F", "Total_Containers": 639,  "Cluster_Need": 2, "ETA": date(2024,3,8), "Berth": "NP1"},
+    {"Vessel": "G", "Total_Containers": 1091, "Cluster_Need": 2, "ETA": date(2024,3,9), "Berth": "NP2"},
+    {"Vessel": "H", "Total_Containers": 1002, "Cluster_Need": 3, "ETA": date(2024,3,9), "Berth": "NP2"},
+    {"Vessel": "I", "Total_Containers": 1019, "Cluster_Need": 2, "ETA": date(2024,3,10), "Berth": "NP2"},
+    {"Vessel": "J", "Total_Containers": 983,  "Cluster_Need": 2, "ETA": date(2024,3,10), "Berth": "NP2"},
+    {"Vessel": "K", "Total_Containers": 667,  "Cluster_Need": 1, "ETA": date(2024,3,11), "Berth": "NP3"},
+    {"Vessel": "L", "Total_Containers": 952,  "Cluster_Need": 2, "ETA": date(2024,3,11), "Berth": "NP3"},
+    {"Vessel": "M", "Total_Containers": 1302, "Cluster_Need": 2, "ETA": date(2024,3,12), "Berth": "NP1"},
+    {"Vessel": "N", "Total_Containers": 538,  "Cluster_Need": 1, "ETA": date(2024,3,12), "Berth": "NP2"},
+    {"Vessel": "O", "Total_Containers": 1204, "Cluster_Need": 3, "ETA": date(2024,3,12), "Berth": "NP3"},
+    {"Vessel": "P", "Total_Containers": 1298, "Cluster_Need": 3, "ETA": date(2024,3,12), "Berth": "NP1"},
 ]
 
 # ---------------------------------------------------------------
