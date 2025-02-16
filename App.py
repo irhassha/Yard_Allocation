@@ -301,10 +301,41 @@ for d in all_days:
         if not v_state["done"] and v_state["end_load"] == d:
             v_state["done"] = True
             log_events.append((d, f"{vessel_name} finished loading."))
+            
+    # Di luar loop, siapkan dict
+    yard_snapshots = {}
+
+    for d in all_days:
+    # ... (proses receiving/loading)
+    
+    # Setelah proses di hari d, kita buat "salinan" (deep copy) state slot
+    snapshot = []
+    for slot in all_slots:
+        # Salin minimal info: slot_id, total, detail
+        total_in_slot = sum(slot["containers"].values())
+        detail = dict(slot["containers"])  # copy dict
+        snapshot.append({
+            "slot_id": slot["slot_id"],
+            "total": total_in_slot,
+            "detail": detail
+        })
+    yard_snapshots[d] = snapshot
 
 # ---------------------------------------------------------------
 # 12. Tampilkan di Streamlit
 # ---------------------------------------------------------------
+day_choice = st.selectbox("Pilih Tanggal untuk Lihat Yard:", sorted(yard_snapshots.keys()))
+chosen_snapshot = yard_snapshots[day_choice]
+df_chosen = pd.DataFrame([
+    {
+        "Slot_ID": s["slot_id"],
+        "Total_Used": s["total"],
+        "Detail": ", ".join(f"{k}({v})" for k,v in s["detail"].items()) if s["total"]>0 else ""
+    }
+    for s in chosen_snapshot
+])
+st.dataframe(df_chosen[df_chosen["Total_Used"]>0])
+
 st.title("Dynamic Yard Allocation (Timeline) - Advanced Example")
 st.write("""
 **Fitur**:
