@@ -29,11 +29,6 @@ vessels_data = [
 
 # ---------------------------------------------------------------
 # 2. Info Block & Preferensi
-#    - Tiap block punya kapasitas (slots × 30 kontainer/slot).
-#    - Kita definisikan preferensi block per Berth:
-#      NP1 -> A-block, B-block, C-block
-#      NP2 -> B-block, A-block, C-block
-#      NP3 -> C-block, B-block, A-block
 # ---------------------------------------------------------------
 blocks_info = {
     "A01": {"slots": 37, "max_per_slot": 30},
@@ -63,12 +58,10 @@ def get_block_prefix_order(berth):
 
 # ---------------------------------------------------------------
 # 3. Membuat struktur all_slots
-#    Di setiap slot, kita simpan 'containers' -> dict { cluster_label: jumlah }
-#    agar memungkinkan multi cluster di satu slot.
 # ---------------------------------------------------------------
 all_slots = []
 for block, info in blocks_info.items():
-    for s in range(1, info["slots"]+1):
+    for s in range(1, info["slots"] + 1):
         slot_id = f"{block}-{s}"
         all_slots.append({
             "slot_id": slot_id,
@@ -77,18 +70,15 @@ for block, info in blocks_info.items():
             "containers": {}  # cluster_label -> qty
         })
 
-# Fungsi pembantu untuk mendapatkan prefix block dari slot_id
-def block_prefix(slot_id):
-    """Mengembalikan prefix 'A', 'B', atau 'C' dari slot_id (misal: 'A01-3' -> 'A')."""
-    return slot_id[0]
-
 # ---------------------------------------------------------------
 # 4. Aturan Minimal Cluster
 # ---------------------------------------------------------------
 def determine_cluster_need(total_from_data, cluster_from_data):
-    """Jika total <1000 => 3 cluster,
-       elif total <1500 => 2 cluster,
-       else => pakai cluster_from_data."""
+    """
+    Jika total <1000 => 3 cluster,
+    elif total <1500 => 2 cluster,
+    else => pakai cluster_from_data.
+    """
     if total_from_data < 1000:
         return 3
     elif total_from_data < 1500:
@@ -105,7 +95,8 @@ CRANE_MOVE_PER_HOUR = 28
 CRANE_COUNT = 2.7
 
 def get_loading_days(total_containers):
-    move_per_day = CRANE_MOVE_PER_HOUR * CRANE_COUNT * 24  # mis: 28*2.7*24
+    """Hitung durasi loading dalam satuan 'hari' (dibulatkan ke atas)."""
+    move_per_day = CRANE_MOVE_PER_HOUR * CRANE_COUNT * 24
     days = total_containers / move_per_day
     return math.ceil(days)
 
@@ -131,10 +122,10 @@ vessel_states = {}
 for v in vessels_data:
     v_name = v["Vessel"]
     total_c = math.ceil(v["Total_Containers"])
-    # Override cluster jika perlu
+    # override cluster jika perlu
     needed_cluster = determine_cluster_need(total_c, v["Cluster_Need"])
     
-    # Bagi kontainer ke cluster
+    # Bagi cluster
     base_csize = total_c // needed_cluster
     rem = total_c % needed_cluster
     clusters = []
@@ -166,13 +157,12 @@ for v in vessels_data:
 
 # ---------------------------------------------------------------
 # 8. Hindari Clash ETA < 3 Hari
-#    Simpan "block_usage" per block agar kita tahu vessel mana yang sudah pakai block tersebut.
 # ---------------------------------------------------------------
 block_usage = {}
 
 def is_clashing(this_vessel, block, states, margin_days=3):
-    """Cek apakah menempatkan 'this_vessel' ke block akan clash dengan vessel lain 
-       di block yang ETA-nya beda < margin_days."""
+    """Cek apakah menempatkan 'this_vessel' ke block akan clash 
+       dengan vessel lain di block yang ETA-nya beda < margin_days."""
     if block not in block_usage:
         return False
     this_eta = states[this_vessel]["ETA"]
@@ -182,17 +172,18 @@ def is_clashing(this_vessel, block, states, margin_days=3):
     return False
 
 def mark_block_usage(vessel, block):
-    """Tandai block sudah digunakan oleh vessel."""
+    """Tandai block digunakan oleh vessel."""
     v_eta = vessel_states[vessel]["ETA"]
     if block not in block_usage:
         block_usage[block] = []
     block_usage[block].append((vessel, v_eta))
 
 # ---------------------------------------------------------------
-# 9. Fungsi Alokasi Container dengan Preferensi Block
+# 9. Fungsi Alokasi Container (Preferensi Block + Clash Check)
 # ---------------------------------------------------------------
 def allocate_with_preference(cluster_label, qty, vessel_name):
-    """Alokasikan 'qty' kontainer ke slot-slot sesuai preferensi block berdasarkan berth,
+    """Alokasikan 'qty' kontainer ke slot-slot 
+       sesuai preferensi block (berdasarkan berth),
        hindari block yang clash."""
     berth = vessel_states[vessel_name]["Berth"]
     prefix_order = get_block_prefix_order(berth)
@@ -201,18 +192,19 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
     for pfx in prefix_order:
         if remaining <= 0:
             break
-        # Dapatkan slot-slot dengan prefix ini, dikelompokkan per block
+        # Kumpulkan slot2 di block prefix pfx
         block_slots_map = {}
         for slot in all_slots:
             if slot["block"].startswith(pfx):
                 block_slots_map.setdefault(slot["block"], []).append(slot)
+        
+        # Sort block_name
         for block_name in sorted(block_slots_map.keys()):
             if remaining <= 0:
                 break
-            # Cek clash
             if is_clashing(vessel_name, block_name, vessel_states):
                 continue
-            # Jika tidak clash, isi slot di block tersebut
+            # isi slot2 di block_name
             for slot in block_slots_map[block_name]:
                 if remaining <= 0:
                     break
@@ -223,7 +215,8 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
                     slot["containers"].setdefault(cluster_label, 0)
                     slot["containers"][cluster_label] += can_fill
                     remaining -= can_fill
-            # Tandai block usage jika setidaknya ada alokasi
+            
+            # kalau minimal 1 container teralokasi di block ini, tandai usage
             if remaining < qty:
                 mark_block_usage(vessel_name, block_name)
     return remaining
@@ -232,7 +225,7 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
 # 10. Fungsi Remove Container (Loading)
 # ---------------------------------------------------------------
 def remove_cluster_containers(cluster_label, qty):
-    """Mengeluarkan 'qty' kontainer milik cluster_label dari yard."""
+    """Mengurangi 'qty' kontainer cluster_label dari yard."""
     remaining = qty
     for slot in all_slots:
         if remaining <= 0:
@@ -247,16 +240,21 @@ def remove_cluster_containers(cluster_label, qty):
     return remaining
 
 # ---------------------------------------------------------------
-# 11. Simulasi Day-by-Day
+# 11. Kita juga mau menyimpan "snapshot" yard di setiap hari
+# ---------------------------------------------------------------
+yard_snapshots = {}  # key = date, value = list of slot usage
+
+# ---------------------------------------------------------------
+# 12. Simulasi Day-by-Day
 # ---------------------------------------------------------------
 log_events = []
 
 for d in all_days:
-    # 1. Tandai kapal yang sudah selesai loading (jika hari sudah lewat end_load)
+    # 1. Tandai kapal yg loading selesai jika d > end_load
     for vessel_name, v_state in vessel_states.items():
         if not v_state["done"] and d > v_state["end_load"]:
             v_state["done"] = True
-
+    
     # 2. Receiving
     for vessel_name, v_state in vessel_states.items():
         if v_state["done"]:
@@ -274,6 +272,7 @@ for d in all_days:
                         if allocated > 0:
                             log_events.append((d, f"[RECV] {allocated} to {cluster['cluster_label']}"))
         elif d == v_state["ETA"]:
+            # masukkan sisa remain
             for cluster in v_state["Clusters"]:
                 if cluster["remain"] > 0:
                     leftover = allocate_with_preference(cluster["cluster_label"], cluster["remain"], vessel_name)
@@ -296,58 +295,41 @@ for d in all_days:
                 if removed > 0:
                     log_events.append((d, f"[LOAD] {removed} from {cluster['cluster_label']}"))
     
-    # 4. Tandai kapal selesai loading jika hari sama dengan end_load
+    # 4. Jika kapal end_load == d, tandai done
     for vessel_name, v_state in vessel_states.items():
         if not v_state["done"] and v_state["end_load"] == d:
             v_state["done"] = True
             log_events.append((d, f"{vessel_name} finished loading."))
-            
-    # Di luar loop, siapkan dict
-    yard_snapshots = {}
 
-    for d in all_days:
-    # ... (proses receiving/loading)
-    
-    # Setelah proses di hari d, kita buat "salinan" (deep copy) state slot
+    # 5. Simpan snapshot yard di akhir hari d
     snapshot = []
     for slot in all_slots:
-        # Salin minimal info: slot_id, total, detail
         total_in_slot = sum(slot["containers"].values())
-        detail = dict(slot["containers"])  # copy dict
+        detail_dict = dict(slot["containers"])  # salin isi containers
         snapshot.append({
             "slot_id": slot["slot_id"],
             "total": total_in_slot,
-            "detail": detail
+            "detail": detail_dict
         })
     yard_snapshots[d] = snapshot
 
 # ---------------------------------------------------------------
-# 12. Tampilkan di Streamlit
+# 13. Tampilkan di Streamlit
 # ---------------------------------------------------------------
-day_choice = st.selectbox("Pilih Tanggal untuk Lihat Yard:", sorted(yard_snapshots.keys()))
-chosen_snapshot = yard_snapshots[day_choice]
-df_chosen = pd.DataFrame([
-    {
-        "Slot_ID": s["slot_id"],
-        "Total_Used": s["total"],
-        "Detail": ", ".join(f"{k}({v})" for k,v in s["detail"].items()) if s["total"]>0 else ""
-    }
-    for s in chosen_snapshot
-])
-st.dataframe(df_chosen[df_chosen["Total_Used"]>0])
-
-st.title("Dynamic Yard Allocation (Timeline) - Advanced Example")
+st.title("Dynamic Yard Allocation (Timeline) - Advanced with Daily Snapshots")
 st.write("""
 **Fitur**:
-1. Minimal cluster: <1000 => 3, <1500 => 2, sisanya pakai data.
+1. Minimal cluster: <1000 => 3, <1500 => 2, sisanya pakai data.  
 2. Preferensi block: 
    - NP1 => A -> B -> C  
    - NP2 => B -> A -> C  
    - NP3 => C -> B -> A  
-3. Hindari clash ETA < 3 hari di block yang sama.
-4. Timeline day-by-day: receiving ±12%/hari (7 hari), loading => slot dibebaskan.
+3. Hindari clash ETA < 3 hari di block yang sama.  
+4. Timeline day-by-day: receiving ±12%/hari (7 hari), loading => slot dibebaskan.  
+5. **Snapshot harian**: kita bisa lihat kondisi yard di hari tertentu.
 """)
 
+# 13.1 Data Vessels
 df_vessels = pd.DataFrame([
     {
         "Vessel": v["Vessel"],
@@ -362,28 +344,38 @@ df_vessels = pd.DataFrame([
 st.subheader("1. Data Vessels")
 st.dataframe(df_vessels)
 
+# 13.2 Log Events
 df_log = pd.DataFrame(log_events, columns=["Date", "Event"])
 df_log.sort_values(by=["Date","Event"], inplace=True)
 df_log.reset_index(drop=True, inplace=True)
-st.subheader("2. Log Events")
+st.subheader("2. Log Events (Chronological)")
 st.dataframe(df_log)
 
-st.subheader("3. Final Yard Usage")
-slot_rows = []
-for slot in all_slots:
-    total_in_slot = sum(slot["containers"].values())
-    detail = ", ".join(f"{k}({v})" for k, v in slot["containers"].items()) if total_in_slot > 0 else ""
-    slot_rows.append({
-        "Slot_ID": slot["slot_id"],
-        "Total_Used": total_in_slot,
-        "Detail": detail
+# 13.3 Pilih Hari untuk Lihat Snapshot Yard
+st.subheader("3. Lihat Snapshot Yard di Hari Tertentu")
+
+day_choice = st.selectbox(
+    "Pilih Tanggal",
+    sorted(list(yard_snapshots.keys()))
+)
+
+chosen_snapshot = yard_snapshots[day_choice]
+rows = []
+for s in chosen_snapshot:
+    if s["total"] > 0:
+        detail_str = ", ".join(f"{k}({v})" for k,v in s["detail"].items())
+    else:
+        detail_str = ""
+    rows.append({
+        "Slot_ID": s["slot_id"],
+        "Total_Used": s["total"],
+        "Detail": detail_str
     })
-df_slots = pd.DataFrame(slot_rows)
-st.dataframe(df_slots[df_slots["Total_Used"] > 0].reset_index(drop=True))
+df_chosen = pd.DataFrame(rows)
+st.dataframe(df_chosen[df_chosen["Total_Used"]>0].reset_index(drop=True))
 
 st.write("""
 **Catatan**:
-- Jika banyak slot kosong di akhir, artinya kapal sudah selesai muat.
-- Jika masih ada kontainer di slot, berarti kapal tersebut belum selesai di timeline terakhir.
-- Mekanisme 'hindari clash' sederhana: jika block pernah dipakai oleh vessel X (ETA_X), vessel lain dengan |ETA - ETA_X| < 3 hari akan skip block tersebut.
+- Kalau "Total_Used" kosong di semua slot pada hari tertentu, artinya yard sedang kosong hari itu.
+- Semakin dekat ke akhir timeline, mungkin yard benar-benar kosong karena semua kapal sudah selesai muat.
 """)
