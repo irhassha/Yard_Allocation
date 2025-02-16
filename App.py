@@ -442,7 +442,11 @@ chosen_snapshot = yard_snapshots[day_choice]
 df_dynamic_visual = prepare_visual_dynamic(chosen_snapshot)
 
 # Misalnya abati mau menampilkan block B03, B04, C01, C02, C03
-blocks_to_show = ["A01", "A02", "A03", "A05", "B01", "B02", B03", "B04", "C01", "C02", "C03"]
+blocks_to_show = [
+    "A01", "A02", "A03", "A04", "A05",
+    "B01", "B02", "B03", "B04",
+    "C01", "C02", "C03"
+]
 chart_dynamic = visualize_multiple_blocks(df_dynamic_visual, blocks_to_show, f"Dynamic Yard - {day_choice}")
 st.altair_chart(chart_dynamic, use_container_width=True)
 
