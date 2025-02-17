@@ -21,7 +21,12 @@ if missing_cols:
     st.error(f"Kolom berikut belum ada di Excel: {missing_cols}")
     st.stop()
 
-df_vessels["ETA"] = pd.to_datetime(df_vessels["ETA"], errors="coerce")
+df_vessels["ETA"] = df_vessels["ETA"].astype(str)  # pastikan jadi string
+df_vessels["ETA"] = pd.to_datetime(
+    df_vessels["ETA"],
+    format="%Y%m%d",    # karena formatmu YYYYMMDD (misal: 20240206)
+    errors="coerce"
+)
 
 st.subheader("Data Vessels (from Excel)")
 st.dataframe(df_vessels)
