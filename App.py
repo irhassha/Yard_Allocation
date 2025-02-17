@@ -5,37 +5,43 @@ import math
 from datetime import date, timedelta
 
 # ---------------------------------------------------------------
-# 1. File Uploader untuk data vessel
+# 1. File Uploader untuk data vessel (Excel)
 # ---------------------------------------------------------------
-st.title("Container Yard Allocation - Excel Upload Version")
+st.title("Container Yard Allocation - Per Vessel Daily Rates Example")
 
-uploaded_file = st.file_uploader("Upload Vessel Excel (with columns: Vessel, Total_Containers, Cluster_Need, ETA, Berth)", type=["xlsx"])
-
+uploaded_file = st.file_uploader("Upload Vessel Excel (Vessel, Total_Containers, Cluster_Need, ETA, Berth)", type=["xlsx"])
 if not uploaded_file:
     st.warning("Silakan upload file Excel terlebih dahulu.")
     st.stop()
 
-# Baca file Excel
 df_vessels = pd.read_excel(uploaded_file)
-
-# Pastikan kolom minimal
 required_cols = ["Vessel","Total_Containers","Cluster_Need","ETA","Berth"]
 missing_cols = [c for c in required_cols if c not in df_vessels.columns]
 if missing_cols:
     st.error(f"Kolom berikut belum ada di Excel: {missing_cols}")
     st.stop()
 
-# Convert ETA ke datetime
 df_vessels["ETA"] = pd.to_datetime(df_vessels["ETA"], errors="coerce")
 
 st.subheader("Data Vessels (from Excel)")
 st.dataframe(df_vessels)
 
-# Konversi ke list of dict
 vessels_data = df_vessels.to_dict(orient="records")
 
 # ---------------------------------------------------------------
-# 2. Aturan Minimal Cluster (misal <1000 => 3, <1500 => 2, else pakai data)
+# 2. Definisikan Rate Harian (Day 1 - Day 7) untuk setiap Kapal
+#    Silakan isi sesuai data real abati.
+#    Kalau ada kapal lain (D, E, F, dsb.), tambahkan di dictionary ini.
+# ---------------------------------------------------------------
+receiving_rate_map = {
+    "A": {1: 0.13, 2: 0.15, 3: 0.12, 4: 0.25, 5: 0.25, 6: 0.05, 7: 0.05},
+    "B": {1: 0.12, 2: 0.17, 3: 0.21, 4: 0.30, 5: 0.10, 6: 0.07, 7: 0.03},
+    "C": {1: 0.10, 2: 0.11, 3: 0.29, 4: 0.30, 5: 0.10, 6: 0.06, 7: 0.04},
+    # Tambahkan di sini kalau ada kapal lain (D, E, F, dsb.)
+}
+
+# ---------------------------------------------------------------
+# 3. Aturan Minimal Cluster
 # ---------------------------------------------------------------
 def determine_cluster_need(total_c, cluster_c):
     if total_c < 1000:
@@ -46,9 +52,9 @@ def determine_cluster_need(total_c, cluster_c):
         return cluster_c
 
 # ---------------------------------------------------------------
-# 3. Parameter Operasional
+# 4. Parameter Operasional
 # ---------------------------------------------------------------
-RECEIVING_DAYS = 7
+RECEIVING_DAYS = 7  # 7 hari sebelum ETA
 CRANE_MOVE_PER_HOUR = 28
 CRANE_COUNT = 2.7
 
@@ -58,7 +64,7 @@ def get_loading_days(total_containers):
     return math.ceil(days)
 
 # ---------------------------------------------------------------
-# 4. Info Block
+# 5. Info Block
 # ---------------------------------------------------------------
 blocks_info = {
     "A01": {"slots": 37, "max_per_slot": 30},
@@ -86,10 +92,9 @@ def get_block_prefix_order(berth):
         return ["A","B","C"]
 
 # ---------------------------------------------------------------
-# 5. Sort vessels_data by ETA
+# 6. Sorting & Timeline
 # ---------------------------------------------------------------
 vessels_data = sorted(vessels_data, key=lambda x: x["ETA"])
-
 min_eta = min(v["ETA"] for v in vessels_data)
 max_eta = max(v["ETA"] for v in vessels_data)
 start_date = min_eta - timedelta(days=RECEIVING_DAYS)
@@ -102,7 +107,7 @@ while cur <= end_date:
     cur += timedelta(days=1)
 
 # ---------------------------------------------------------------
-# 6. Buat all_slots (Dynamic)
+# 7. all_slots (Dynamic)
 # ---------------------------------------------------------------
 all_slots = []
 for block, info in blocks_info.items():
@@ -116,20 +121,18 @@ for block, info in blocks_info.items():
         })
 
 # ---------------------------------------------------------------
-# 7. Buat vessel_states (Dynamic)
+# 8. vessel_states
 # ---------------------------------------------------------------
 vessel_states = {}
 for v in vessels_data:
     v_name = v["Vessel"]
     total_c = math.ceil(v["Total_Containers"])
-    cluster_c = v["Cluster_Need"]
-    needed_cluster = determine_cluster_need(total_c, cluster_c)
+    cluster_need = determine_cluster_need(total_c, v["Cluster_Need"])
     
-    base_c = total_c // needed_cluster
-    rem = total_c % needed_cluster
-    
+    base_c = total_c // cluster_need
+    rem = total_c % cluster_need
     clusters = []
-    for i in range(needed_cluster):
+    for i in range(cluster_need):
         size_ = base_c + (1 if i<rem else 0)
         clusters.append({
             "cluster_label": f"{v_name}-C{i+1}",
@@ -148,7 +151,7 @@ for v in vessels_data:
         "ETA": eta,
         "Berth": v["Berth"],
         "Clusters": clusters,
-        "start_receive": eta - timedelta(days=RECEIVING_DAYS),
+        "start_receive": eta - timedelta(days=RECEIVING_DAYS),  # 7 hari sebelum ETA
         "end_receive": eta - timedelta(days=1),
         "start_load": start_load,
         "end_load": end_load,
@@ -156,7 +159,7 @@ for v in vessels_data:
     }
 
 # ---------------------------------------------------------------
-# 8. Hindari Clash ETA < 3 Hari
+# 9. Hindari Clash ETA < 3 Hari
 # ---------------------------------------------------------------
 block_usage = {}
 
@@ -176,7 +179,7 @@ def mark_block_usage(vessel, block):
     block_usage[block].append((vessel, v_eta))
 
 # ---------------------------------------------------------------
-# 9. Fungsi Alokasi (Dynamic)
+# 10. Fungsi Alokasi & Remove (Dynamic)
 # ---------------------------------------------------------------
 def allocate_with_preference(cluster_label, qty, vessel_name):
     berth = vessel_states[vessel_name]["Berth"]
@@ -186,7 +189,6 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
     for pfx in prefix_order:
         if remaining <= 0:
             break
-        # group slot by block
         block_slots_map = {}
         for slot in all_slots:
             if slot["block"].startswith(pfx):
@@ -227,46 +229,46 @@ def remove_cluster_containers(cluster_label, qty):
     return remaining
 
 # ---------------------------------------------------------------
-# 10. Simulasi Dynamic Day-by-Day
-#     (pakai rate 12%/hari x 7 => 84%, sisanya 16% di hari ETA) (contoh)
+# 11. Simulasi Dynamic (pakai rate harian per kapal)
 # ---------------------------------------------------------------
-yard_snapshots = {}
+yard_snapshots = []
 log_events = []
 
+# Kita akan simpan snapshot di dictionary: day -> snapshot
+snapshots_map = {}
+
 for d in all_days:
-    # Selesai loading?
+    # 1. Tandai kapal yang sudah lewat end_load => done
     for v_name, stt in vessel_states.items():
         if not stt["done"] and d>stt["end_load"]:
             stt["done"] = True
     
-    # Receiving
+    # 2. Receiving
     for v_name, stt in vessel_states.items():
         if stt["done"]:
             continue
         if stt["start_receive"] <= d <= stt["end_receive"]:
-            # 12% daily (contoh)
-            daily_in = math.ceil(stt["Total"] * 0.12)
+            # day_idx = (d - start_receive).days + 1
+            day_idx = (d - stt["start_receive"]).days + 1  # 1..7
+            rate = 0.0
+            # ambil rate dari receiving_rate_map kalau ada
+            if v_name in receiving_rate_map:
+                if day_idx in receiving_rate_map[v_name]:
+                    rate = receiving_rate_map[v_name][day_idx]
+            # daily_in
+            daily_in = math.ceil(stt["Total"] * rate)
+            
             for c in stt["Clusters"]:
                 if c["remain"]>0:
-                    portion = min(daily_in * (c["size"]/stt["Total"]), c["remain"])
-                    portion = math.ceil(portion)
+                    # portion => daily_in * (porsi cluster)
+                    portion = math.ceil(daily_in * (c["size"]/stt["Total"]))
                     leftover = allocate_with_preference(c["cluster_label"], portion, v_name)
                     allocated = portion - leftover
                     c["remain"] -= allocated
                     if allocated>0:
-                        log_events.append((d, f"[RECV] {allocated} => {c['cluster_label']}"))
-        elif d == stt["ETA"]:
-            # sisanya 16% (contoh)
-            for c in stt["Clusters"]:
-                if c["remain"]>0:
-                    portion = c["remain"]
-                    leftover = allocate_with_preference(c["cluster_label"], portion, v_name)
-                    allocated = portion - leftover
-                    c["remain"] -= allocated
-                    if allocated>0:
-                        log_events.append((d, f"[RECV-FINAL] {allocated} => {c['cluster_label']}"))
+                        log_events.append((d, f"[RECV D{day_idx}] {allocated} => {c['cluster_label']}"))
     
-    # Loading
+    # 3. Loading
     for v_name, stt in vessel_states.items():
         if stt["done"]:
             continue
@@ -280,13 +282,13 @@ for d in all_days:
                 if removed>0:
                     log_events.append((d, f"[LOAD] {removed} from {c['cluster_label']}"))
     
-    # end_load => done
+    # 4. end_load == d => done
     for v_name, stt in vessel_states.items():
         if not stt["done"] and stt["end_load"] == d:
             stt["done"] = True
             log_events.append((d, f"{v_name} finished loading."))
 
-    # snapshot
+    # 5. Snapshot
     snapshot = []
     for slot in all_slots:
         total_in_slot = sum(slot["containers"].values())
@@ -296,13 +298,13 @@ for d in all_days:
             "total": total_in_slot,
             "detail": detail_dict
         })
-    yard_snapshots[d] = snapshot
+    snapshots_map[d] = snapshot
 
 df_log = pd.DataFrame(log_events, columns=["Date","Event"]).sort_values(by=["Date","Event"])
 df_log.reset_index(drop=True, inplace=True)
 
 # ---------------------------------------------------------------
-# 11. Static Allocation
+# 12. Static Allocation
 # ---------------------------------------------------------------
 static_slots = []
 for block, info in blocks_info.items():
@@ -344,7 +346,7 @@ for s in static_slots:
 df_static = pd.DataFrame(static_table_rows)
 
 # ---------------------------------------------------------------
-# 12. Fungsi Visual
+# 13. Fungsi Visual
 # ---------------------------------------------------------------
 def prepare_visual_dynamic(snapshot):
     rows = []
@@ -380,7 +382,7 @@ def prepare_visual_static(df_static):
             if col.startswith("Vessel "):
                 val = row[col]
                 if isinstance(val, str) and val.strip():
-                    occupant_list.append(val.split("(")[0])  # e.g. "A(10)" => "A"
+                    occupant_list.append(val.split("(")[0])  
         
         if not occupant_list:
             occupant_label = ""
@@ -400,7 +402,6 @@ def parse_occupant_vessels(occupant_str):
     if not occupant_str:
         return []
     parts = occupant_str.split("+")
-    # "A-C1" => "A", "B-C2" => "B"
     vessel_list = []
     for p in parts:
         if "-" in p:
@@ -411,7 +412,7 @@ def parse_occupant_vessels(occupant_str):
 
 def filter_vessels(df, selected_vessels):
     if not selected_vessels:
-        return df[0:0]  # kosong
+        return df[0:0]
     filtered_rows = []
     for i, row in df.iterrows():
         occupant = row["occupant"]
@@ -421,10 +422,6 @@ def filter_vessels(df, selected_vessels):
     return pd.DataFrame(filtered_rows)
 
 def visualize_blocks_side_by_side(df, chart_title):
-    """
-    Tiga chart: Group C (C01..C03), Group B (B04..B01), Group A (A05..A01)
-    side by side
-    """
     def make_chart(df_sub, block_list, sub_title):
         data_sub = df_sub[df_sub["block"].isin(block_list)].copy()
         data_sub["slot_str"] = data_sub["slot"].astype(str)
@@ -453,7 +450,7 @@ def visualize_blocks_side_by_side(df, chart_title):
     return final
 
 # ---------------------------------------------------------------
-# 13. Tampilkan di Streamlit
+# 14. Tampilkan di Streamlit
 # ---------------------------------------------------------------
 st.subheader("Log Events (Dynamic)")
 st.dataframe(df_log)
@@ -465,8 +462,8 @@ vessel_choice = st.multiselect("Filter Vessel", all_vessels, default=all_vessels
 
 if mode=="Dynamic":
     st.subheader("Dynamic Snapshot")
-    day_choice = st.selectbox("Pilih Tanggal Snapshot", sorted(yard_snapshots.keys()))
-    chosen_snapshot = yard_snapshots[day_choice]
+    day_choice = st.selectbox("Pilih Tanggal Snapshot", sorted(snapshots_map.keys()))
+    chosen_snapshot = snapshots_map[day_choice]
     df_dyn = prepare_visual_dynamic(chosen_snapshot)
     df_dyn_filtered = filter_vessels(df_dyn, vessel_choice)
     chart_dyn = visualize_blocks_side_by_side(df_dyn_filtered, f"Dynamic - {day_choice}")
@@ -480,9 +477,11 @@ else:
     st.altair_chart(chart_stat, use_container_width=True)
 
 st.write("""
-**Catatan**:
-- Data vessel diambil dari Excel upload (kolom: Vessel, Total_Containers, Cluster_Need, ETA, Berth).
-- Masih pakai rate 12% x 7 hari + 16% di hari ETA (contoh).
-- Hasil alokasi dynamic vs. static ditampilkan di chart 3 kolom (C, B, A).
-- Filter Vessel menampilkan hanya slot yang memuat kapal yang dipilih.
+**Penjelasan**:
+- Setiap kapal punya **rate** harian (Day 1 s/d Day 7) di `receiving_rate_map`. 
+- Di script ini contohnya cuma A, B, C. 
+- Kalau abati punya kapal lain (D, E, F, ...), tambahkan di dictionary `receiving_rate_map`.
+- Day 1 = H-7 + 1 (alias H-6), Day 2 = H-5, dsb., bergantung definisi. 
+  Di sini kita pakai day_idx = (d - start_receive).days + 1, 
+  lalu ambil `receiving_rate_map[v_name][day_idx]`.
 """)
