@@ -2,4 +2,3 @@ streamlit
 altair
 pandas
 openpyxl
-math
