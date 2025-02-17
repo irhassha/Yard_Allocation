@@ -351,7 +351,7 @@ for s in static_slots:
 df_static = pd.DataFrame(static_table_rows)
 
 # ---------------------------------------------------------------
-# 13. Fungsi Visual
+# 13. Fungsi Visualisasi
 # ---------------------------------------------------------------
 def prepare_visual_dynamic(snapshot):
     rows = []
@@ -363,13 +363,14 @@ def prepare_visual_dynamic(snapshot):
         detail = slot_info["detail"]
         if not detail:
             occupant_label = ""
-        elif len(detail)==1:
+        elif len(detail) == 1:
             occupant_label = list(detail.keys())[0]
         else:
             occupant_label = "+".join(detail.keys())
         rows.append({
             "block": block_name,
             "slot": slot_num,
+            "slot_str": str(slot_num),
             "occupant": occupant_label
         })
     return pd.DataFrame(rows)
@@ -377,28 +378,27 @@ def prepare_visual_dynamic(snapshot):
 def prepare_visual_static(df_static):
     rows = []
     for i, row in df_static.iterrows():
-        slot_id = row["Slot"]
-        parts = slot_id.split("-")
+        sid = row["Slot"]
+        parts = sid.split("-")
         block_name = parts[0]
         slot_num = int(parts[1])
-        
         occupant_list = []
         for col in df_static.columns:
             if col.startswith("Vessel "):
                 val = row[col]
                 if isinstance(val, str) and val.strip():
-                    occupant_list.append(val.split("(")[0])  
-        
+                    vessel = val.split("(")[0]
+                    occupant_list.append(vessel)
         if not occupant_list:
             occupant_label = ""
-        elif len(occupant_list)==1:
+        elif len(occupant_list) == 1:
             occupant_label = occupant_list[0]
         else:
             occupant_label = "+".join(occupant_list)
-        
         rows.append({
             "block": block_name,
             "slot": slot_num,
+            "slot_str": str(slot_num),
             "occupant": occupant_label
         })
     return pd.DataFrame(rows)
@@ -418,41 +418,60 @@ def parse_occupant_vessels(occupant_str):
 def filter_vessels(df, selected_vessels):
     if not selected_vessels:
         return df[0:0]
-    filtered_rows = []
+    filtered = []
     for i, row in df.iterrows():
-        occupant = row["occupant"]
-        occ_list = parse_occupant_vessels(occupant)
+        occ = row["occupant"]
+        occ_list = parse_occupant_vessels(occ)
         if set(occ_list).intersection(set(selected_vessels)):
-            filtered_rows.append(row)
-    return pd.DataFrame(filtered_rows)
+            filtered.append(row)
+    return pd.DataFrame(filtered)
 
+# Visualisasi: Tiga grup chart (Group C, B, A) secara side-by-side dengan layered chart (rect + text)
 def visualize_blocks_side_by_side(df, chart_title):
     def make_chart(df_sub, block_list, sub_title):
         data_sub = df_sub[df_sub["block"].isin(block_list)].copy()
         data_sub["slot_str"] = data_sub["slot"].astype(str)
         
-        chart = alt.Chart(data_sub).mark_rect(size=20).encode(
+        base = alt.Chart(data_sub).encode(
             x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="ascending"), title="Slot"),
             y=alt.Y("block:N", sort=block_list, title="Block"),
-            color=alt.Color("occupant:N", legend=alt.Legend(title="Vessel Assignments")),
-            tooltip=["block","slot","occupant"]
-        ).properties(
+            tooltip=["block", "slot", "occupant"]
+        )
+        
+        rect = base.mark_rect().encode(
+            color=alt.Color("occupant:N", legend=alt.Legend(
+                title="Vessel Assignments", orient="bottom", direction="horizontal"
+            ))
+        )
+        
+        text = base.mark_text(
+            align="center",
+            baseline="middle",
+            color="black"
+        ).encode(
+            text="occupant:N"
+        )
+        
+        chart = (rect + text).properties(
             width=200,
             height=200,
             title=sub_title
         )
         return chart
     
-    blocks_C = ["C01","C02","C03"]
-    blocks_B = ["B04","B03","B02","B01"]
-    blocks_A = ["A05","A04","A03","A02","A01"]
+    # Definisikan grup block sesuai urutan (ubah sesuai kebutuhan)
+    blocks_C = ["C01", "C02", "C03"]
+    blocks_B = ["B04", "B03", "B02", "B01"]
+    blocks_A = ["A05", "A04", "A03", "A02", "A01"]
     
     chart_c = make_chart(df, blocks_C, "Group C")
     chart_b = make_chart(df, blocks_B, "Group B")
     chart_a = make_chart(df, blocks_A, "Group A")
     
-    final = alt.hconcat(chart_c, chart_b, chart_a, spacing=40).properties(title=chart_title)
-    return final
+    final_chart = alt.hconcat(chart_c, chart_b, chart_a, spacing=40).properties(title=chart_title)
+    return final_chart
+
+# ---------------------------------------------------------------
 
 # ---------------------------------------------------------------
 # 14. Tampilkan di Streamlit
