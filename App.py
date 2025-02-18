@@ -426,38 +426,25 @@ def filter_vessels(df, selected_vessels):
             filtered_rows.append(row)
     return pd.DataFrame(filtered_rows)
 
-# Visualisasi: Tiga grup chart (Group C, B, A) side-by-side dengan layered chart (rect + text)
+# Visualisasi: Tiga grup chart (Group C, B, A) side-by-side dengan layered chart
 def visualize_blocks_side_by_side(df, chart_title):
     def make_chart(df_sub, block_list, sub_title):
         data_sub = df_sub[df_sub["block"].isin(block_list)].copy()
         data_sub["slot_str"] = data_sub["slot"].astype(str)
-        base = alt.Chart(data_sub).encode(
-            x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="ascending"), title="Slot"),
+
+        chart = alt.Chart(data_sub).mark_rect(size=20).encode(
+            x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="descending"), title="Slot"),
             y=alt.Y("block:N", sort=block_list, title="Block"),
-            tooltip=["block", "slot", "occupant"]
-        )
-        rect = base.mark_rect().encode(
-            color=alt.Color("occupant:N", legend=alt.Legend(
-                title="Vessel Assignments",
-                orient="bottom",
-                direction="horizontal"
-            ))
-        )
-        text = base.mark_text(
-            align="center",
-            baseline="middle",
-            color="black"
-        ).encode(
-            text="occupant:N"
-        )
-        chart = (rect + text).properties(
+            color=alt.Color("occupant:N", legend=alt.Legend(title="Vessel Assignments")),
+            tooltip=["block","slot","occupant"]
+        ).properties(
             width=200,
             height=200,
             title=sub_title
         )
         return chart
 
-    blocks_C = ["C01", "C02", "C03"]
+    blocks_C = ["C05", "C04", "C03"]
     blocks_B = ["B04", "B03", "B02", "B01"]
     blocks_A = ["A05", "A04", "A03", "A02", "A01"]
 
