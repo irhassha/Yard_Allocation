@@ -452,7 +452,7 @@ def visualize_blocks_side_by_side(df, chart_title):
             text="occupant:N"
         )
         
-        chart = (rect + text).properties(
+        chart = rect.properties(
             width=200,
             height=200,
             title=sub_title
