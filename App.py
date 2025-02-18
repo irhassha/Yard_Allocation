@@ -416,20 +416,14 @@ def parse_occupant_vessels(occupant_str):
     return vessel_list
 
 def filter_vessels(df, selected_vessels):
-    # Jika tidak ada vessel yang dipilih, kembalikan seluruh data
     if not selected_vessels:
-        return df  
+        return df[0:0]
     filtered_rows = []
     for i, row in df.iterrows():
         occ = row["occupant"]
-        # Jika slot kosong (occupant kosong), kita tetap tampilkan
-        if occ.strip() == "":
+        occ_list = parse_occupant_vessels(occ)
+        if set(occ_list).intersection(set(selected_vessels)):
             filtered_rows.append(row)
-        else:
-            occ_list = parse_occupant_vessels(occ)
-            # Jika ada interseksi antara occupant dengan vessel terpilih, tampilkan
-            if set(occ_list).intersection(set(selected_vessels)):
-                filtered_rows.append(row)
     return pd.DataFrame(filtered_rows)
 
 # Visualisasi: Tiga grup chart (Group C, B, A) side-by-side dengan layered chart (rect + text)
