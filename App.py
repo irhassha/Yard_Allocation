@@ -436,7 +436,7 @@ def visualize_blocks_side_by_side(df, chart_title):
             x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="descending"), title="Slot"),
             y=alt.Y("block:N", sort=block_list, title="Block"),
             color=alt.Color("occupant:N", legend=alt.Legend(
-                title="Vessel Assignments", orient="bottom", direction="horizontal", columns=2)),
+                title="Vessel Assignments", orient="bottom", direction="horizontal", row=2)),
             tooltip=["block","slot","occupant"]
         ).properties(
             width=200,
