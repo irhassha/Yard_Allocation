@@ -39,7 +39,7 @@ receiving_rate_map = {
     "A": {1: 0.13, 2: 0.15, 3: 0.12, 4: 0.25, 5: 0.25, 6: 0.05, 7: 0.05},
     "B": {1: 0.12, 2: 0.17, 3: 0.21, 4: 0.30, 5: 0.10, 6: 0.07, 7: 0.03},
     "C": {1: 0.10, 2: 0.11, 3: 0.29, 4: 0.30, 5: 0.10, 6: 0.06, 7: 0.04},
-    # Tambahkan kapal lain (misalnya D, E, dsb.) jika diperlukan.
+    # Tambahkan kapal lain (misalnya D, E, ...) jika diperlukan.
 }
 
 # ---------------------------------------------------------------
@@ -85,7 +85,7 @@ blocks_info = {
 }
 
 def get_block_prefix_order(berth):
-    # Untuk dynamic allocation, kembalikan urutan preferensi blok.
+    # Preferensi utama: NP1 -> ["A","B","C"], NP2 -> ["B","A","C"], NP3 -> ["C","B","A"]
     if berth == "NP1":
         return ["A", "B", "C"]
     elif berth == "NP2":
@@ -121,7 +121,7 @@ for block, info in blocks_info.items():
             "slot_id": slot_id,
             "block": block,
             "capacity_per_slot": info["max_per_slot"],
-            "containers": {}  # akan diisi alokasi cluster
+            "containers": {}  # akan diisi dengan cluster allocation
         })
 
 # ---------------------------------------------------------------
@@ -185,8 +185,9 @@ def mark_block_usage(vessel, block):
 
 # ---------------------------------------------------------------
 # 10. Fungsi Alokasi (Dynamic)
+#    Dimodifikasi untuk mencatat potential clash (notes) jika terjadi.
 # ---------------------------------------------------------------
-def allocate_with_preference(cluster_label, qty, vessel_name):
+def allocate_with_preference(cluster_label, qty, vessel_name, current_day):
     berth = vessel_states[vessel_name]["Berth"]
     prefix_order = get_block_prefix_order(berth)
     remaining = qty
@@ -201,6 +202,8 @@ def allocate_with_preference(cluster_label, qty, vessel_name):
             if remaining <= 0:
                 break
             if is_clashing(vessel_name, block_name):
+                # Catat potential clash
+                log_events.append((current_day, f"Potential clash: {vessel_name} skip block {block_name}"))
                 continue
             for slot in block_slots_map[block_name]:
                 if remaining <= 0:
@@ -231,13 +234,13 @@ def remove_cluster_containers(cluster_label, qty):
     return remaining
 
 # ---------------------------------------------------------------
-# 11. Simulasi Dynamic Allocation (dengan Receiving Rate Harian)
+# 11. Simulasi Dynamic Allocation (menggunakan Receiving Rate Harian)
 # ---------------------------------------------------------------
 snapshots_map = {}  # key: tanggal, value: snapshot (list slot)
-log_events = []
+log_events = []     # untuk mencatat potential clash, dll.
 
 for d in all_days:
-    # Tandai kapal yang sudah lewat end_load => done
+    # Tandai kapal yang sudah melewati end_load => done
     for v_name, stt in vessel_states.items():
         if not stt["done"] and d > stt["end_load"]:
             stt["done"] = True
@@ -247,7 +250,7 @@ for d in all_days:
         if stt["done"]:
             continue
         if stt["start_receive"] <= d <= stt["end_receive"]:
-            # day_idx = (d - start_receive).days + 1 (1 sampai 7)
+            # day_idx = (d - start_receive).days + 1, yaitu 1 sampai 7
             day_idx = (d - stt["start_receive"]).days + 1
             rate = 0.0
             if v_name in receiving_rate_map and day_idx in receiving_rate_map[v_name]:
@@ -258,7 +261,7 @@ for d in all_days:
                     portion = math.ceil(daily_in * (c["size"] / stt["Total"]))
                     portion = min(portion, c["remain"])
                     if portion > 0:
-                        leftover = allocate_with_preference(c["cluster_label"], portion, v_name)
+                        leftover = allocate_with_preference(c["cluster_label"], portion, v_name, d)
                         allocated = portion - leftover
                         c["remain"] -= allocated
                         if allocated > 0:
@@ -310,12 +313,12 @@ for block, info in blocks_info.items():
             "allocations": []
         })
 
+# Untuk static, alokasi dilakukan dengan memperhatikan preferensi blok.
 vessels_sorted = sorted(vessels_data, key=lambda x: x["ETA"])
 for v in vessels_sorted:
     remaining = math.ceil(v["Total_Containers"])
     vname = v["Vessel"]
-    # Ambil preferensi blok dari Berth; misal NP1 => ["A", "B", "C"]
-    pref_order = get_block_prefix_order(v["Berth"])
+    pref_order = get_block_prefix_order(v["Berth"])  # misal NP1 -> ["A", "B", "C"]
     for prefix in pref_order:
         if remaining <= 0:
             break
@@ -471,6 +474,7 @@ st.subheader("Log Events (Dynamic)")
 st.dataframe(df_log)
 
 mode = st.radio("Pilih Mode", ["Dynamic", "Static"], index=0)
+
 all_vessels = [v["Vessel"] for v in vessels_data]
 vessel_choice = st.multiselect("Filter Vessel", all_vessels, default=all_vessels)
 
@@ -500,6 +504,8 @@ st.write("""
     • NP1 (preferensi ["A","B","C"]) akan diutamakan untuk blok yang dimulai dengan "A".
     • NP2 (preferensi ["B","A","C"]) akan diutamakan untuk blok yang dimulai dengan "B".
     • NP3 (preferensi ["C","B","A"]) akan diutamakan untuk blok yang dimulai dengan "C".
-- Visualisasi ditampilkan sebagai tiga grup chart: Group C, Group B, Group A, dengan legend di bawah dan layer rect + text (tanpa merge cell).
+- Visualisasi ditampilkan sebagai tiga grup chart: Group C (blok C), Group B (blok B), Group A (blok A) secara side-by-side.
+- Legend ditampilkan di bawah chart dan tiap sel diisi dengan warna sesuai occupant (tanpa teks occupant karena dihilangkan).
 - Filter Vessel menampilkan hanya slot yang memuat setidaknya satu kapal terpilih.
+- Jika terjadi potential clash (ETA bedanya kurang dari 3 hari), maka akan dicatat di log events.
 """)
