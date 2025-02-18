@@ -79,9 +79,9 @@ blocks_info = {
     "B02": {"slots": 37, "max_per_slot": 30},
     "B03": {"slots": 37, "max_per_slot": 30},
     "B04": {"slots": 37, "max_per_slot": 30},
-    "C01": {"slots": 45, "max_per_slot": 30},
-    "C02": {"slots": 45, "max_per_slot": 30},
     "C03": {"slots": 45, "max_per_slot": 30},
+    "C04": {"slots": 45, "max_per_slot": 30},
+    "C05": {"slots": 45, "max_per_slot": 30},
 }
 
 def get_block_prefix_order(berth):
