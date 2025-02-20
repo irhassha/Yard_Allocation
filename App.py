@@ -36,9 +36,10 @@ vessels_data = df_vessels.to_dict(orient="records")
 #    (Dummy data; sesuaikan dengan data real)
 #    D1 = hari pertama penerimaan (misal: 7 hari sebelum ETA), D2 = hari kedua, dst.
 receiving_rate_map = {
-    "A": {1: 0.13, 2: 0.15, 3: 0.12, 4: 0.25, 5: 0.25, 6: 0.05, 7: 0.05},
-    "B": {1: 0.12, 2: 0.17, 3: 0.21, 4: 0.30, 5: 0.10, 6: 0.07, 7: 0.03},
-    "C": {1: 0.10, 2: 0.11, 3: 0.29, 4: 0.30, 5: 0.10, 6: 0.06, 7: 0.04},
+    "PERTIWI": {1: 0,06, 2: 0,19, 3: 0,26, 4: 0,22, 5: 0,17, 6: 0,05, 7: 0,12},
+    "JPIA": {1: 0,22, 2: 0,39, 3: 0,22, 4: 0,18, 5: 0,01, 6: 0, 7: 0},
+    "JPIB": {1: 0,16, 2: 0,43, 3: 0,31, 4: 0,11, 5: 0,03, 6: 0, 7: 0},
+    "CIT": {1: 0,19, 2: 0,33, 3: 0,31, 4: 0,16, 5: 0,04, 6: 0, 7: 0},
     # Tambahkan kapal lain (misalnya D, E, ...) jika diperlukan.
 }
 
