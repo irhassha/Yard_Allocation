@@ -369,6 +369,16 @@ df_static = pd.DataFrame(static_table_rows)
 # ---------------------------------------------------------------
 # 13. Fungsi Visualisasi
 # ---------------------------------------------------------------
+# Fungsi tambahan untuk mengekstrak vessel name saja dari occupant.
+def extract_vessel(occupant):
+    if not occupant:
+        return ""
+    if "+" in occupant:
+        return "Multiple"
+    if "-" in occupant:
+        return occupant.split("-")[0]
+    return occupant
+
 def prepare_visual_dynamic(snapshot):
     rows = []
     for slot_info in snapshot:
@@ -383,11 +393,13 @@ def prepare_visual_dynamic(snapshot):
             occupant_label = list(detail.keys())[0]
         else:
             occupant_label = "+".join(detail.keys())
+        vessel_name = extract_vessel(occupant_label)
         rows.append({
             "block": block_name,
             "slot": slot_num,
             "slot_str": str(slot_num),
-            "occupant": occupant_label
+            "occupant": occupant_label,
+            "vessel": vessel_name
         })
     return pd.DataFrame(rows)
 
@@ -411,11 +423,13 @@ def prepare_visual_static(df_static):
             occupant_label = occupant_list[0]
         else:
             occupant_label = "+".join(occupant_list)
+        vessel_name = extract_vessel(occupant_label)
         rows.append({
             "block": block_name,
             "slot": slot_num,
             "slot_str": str(slot_num),
-            "occupant": occupant_label
+            "occupant": occupant_label,
+            "vessel": vessel_name
         })
     return pd.DataFrame(rows)
 
@@ -433,28 +447,45 @@ def parse_occupant_vessels(occupant_str):
 
 def filter_vessels(df, selected_vessels):
     if not selected_vessels:
-        return df[0:0]
+        return df
     filtered_rows = []
     for i, row in df.iterrows():
         occ = row["occupant"]
-        occ_list = parse_occupant_vessels(occ)
-        if set(occ_list).intersection(set(selected_vessels)):
+        # Jika slot kosong, tetap tampilkan
+        if occ.strip() == "":
             filtered_rows.append(row)
+        else:
+            occ_list = parse_occupant_vessels(occ)
+            if set(occ_list).intersection(set(selected_vessels)):
+                filtered_rows.append(row)
     return pd.DataFrame(filtered_rows)
 
-# Visualisasi: Tiga grup chart (Group C, B, A) side-by-side dengan layered chart
 def visualize_blocks_side_by_side(df, chart_title):
     def make_chart(df_sub, block_list, sub_title):
         data_sub = df_sub[df_sub["block"].isin(block_list)].copy()
         data_sub["slot_str"] = data_sub["slot"].astype(str)
-
-        chart = alt.Chart(data_sub).mark_rect(size=20).encode(
-            x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="descending"), title="Slot"),
+        base = alt.Chart(data_sub).encode(
+            x=alt.X("slot_str:O", sort=alt.SortField(field="slot", order="ascending"), title="Slot"),
             y=alt.Y("block:N", sort=block_list, title="Block"),
-            color=alt.Color("occupant:N", legend=alt.Legend(
-                title="Vessel Assignments", orient="bottom", direction="horizontal", columns=10)),
-            tooltip=["block","slot","occupant"]
-        ).properties(
+            tooltip=["block", "slot", "occupant"]
+        )
+        # Warna diatur berdasarkan vessel (bukan occupant cluster)
+        rect = base.mark_rect().encode(
+            color=alt.Color("vessel:N", legend=alt.Legend(
+                title="Vessel Assignments",
+                orient="bottom",
+                direction="horizontal",
+                columns=2  # Jika ingin dua baris, misal
+            ))
+        )
+        text = base.mark_text(
+            align="center",
+            baseline="middle",
+            color="black"
+        ).encode(
+            text="occupant:N"
+        )
+        chart = (rect + text).properties(
             width=200,
             height=200,
             title=sub_title
