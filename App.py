@@ -497,18 +497,3 @@ else:
     chart_stat = visualize_blocks_side_by_side(df_stat_filtered, "Static Allocation Layout")
     st.altair_chart(chart_stat, use_container_width=True)
 
-st.write("""
-**Penjelasan**:
-- Data vessel diambil dari file Excel yang diupload (dengan kolom: Vessel, Total_Containers, Cluster_Need, ETA, Berth).
-- ETA dikonversi dari format 'YYYYMMDD' (misal: 20240206) ke datetime.
-- Receiving rate harian didefinisikan secara dummy (D1-D7) per kapal; silakan ubah sesuai data aslinya.
-- Dynamic allocation mensimulasikan penerimaan dan loading berdasarkan timeline dan rate harian.
-- Static allocation mengalokasikan seluruh kontainer sekaligus, dengan preferensi alokasi berdasarkan Berth:
-    • NP1 (preferensi ["A","B","C"]) akan diutamakan untuk blok yang dimulai dengan "A".
-    • NP2 (preferensi ["B","A","C"]) akan diutamakan untuk blok yang dimulai dengan "B".
-    • NP3 (preferensi ["C","B","A"]) akan diutamakan untuk blok yang dimulai dengan "C".
-- Visualisasi ditampilkan sebagai tiga grup chart: Group C (blok C), Group B (blok B), Group A (blok A) secara side-by-side.
-- Legend ditampilkan di bawah chart dan tiap sel diisi dengan warna sesuai occupant (tanpa teks occupant karena dihilangkan).
-- Filter Vessel menampilkan hanya slot yang memuat setidaknya satu kapal terpilih.
-- Jika terjadi potential clash (ETA bedanya kurang dari 3 hari), maka akan dicatat di log events.
-""")
