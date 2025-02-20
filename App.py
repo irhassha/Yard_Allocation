@@ -19,8 +19,9 @@ df_vessels = pd.read_excel(uploaded_file)
 # Pastikan kolom ETA dibaca sebagai string, lalu dikonversi ke datetime
 if "ETA" in df_vessels.columns:
     df_vessels["ETA"] = df_vessels["ETA"].astype(str)
-    # Misal data di Excel berupa 8 digit: YYYYMMDD (contoh: 20240206)
-    df_vessels["ETA"] = pd.to_date(df_vessels["ETA"], format="%Y%m%d", errors="coerce")
+    df_vessels["ETA"] = pd.to_datetime(df_vessels["ETA"], format="%Y%m%d", errors="coerce")
+    # Ubah jadi hanya tanggal (tanpa jam)
+    df_vessels["ETA"] = df_vessels["ETA"].dt.date
 else:
     st.error("Kolom 'ETA' tidak ditemukan.")
     st.stop()
