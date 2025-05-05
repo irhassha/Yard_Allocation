@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Judul aplikasi Streamlit
-st.title("Visualisasi Detail Berdasarkan Carrier Out dan Move")
+st.title("Visualisasi Layout Area Vertikal dan Row/Bay Horizontal")
 
 # Instruksi untuk mengunggah file Excel
 uploaded_file = st.file_uploader("Unggah file Excel Anda", type=["xlsx"])
@@ -16,12 +16,17 @@ if uploaded_file is not None:
         st.subheader("Data Anda:")
         st.dataframe(df)
 
-        # --- Membuat Visualisasi Detail ---
-        st.subheader("Visualisasi Detail:")
+        # --- Membuat Visualisasi Layout ---
+        st.subheader("Visualisasi Layout:")
 
-        # Filter data untuk Move "Export" dan "Transhipment" untuk pewarnaan
+        # Filter data untuk Move "Export" dan "Transhipment"
         df_filtered = df[df['Move'].isin(['Export', 'Transhipment'])].copy()
         df_import = df[df['Move'] == 'Import'].copy()
+
+        # Filter hanya blok yang diinginkan
+        allowed_blocks = [f'{area}{i:02d}' for area in ['C', 'B', 'A'] for i in range(1, 9)]
+        df_filtered = df_filtered[df_filtered['Row/bay (EXE)'].str[:3].isin(allowed_blocks)].copy()
+        df_import = df_import[df_import['Row/bay (EXE)'].str[:3].isin(allowed_blocks)].copy()
 
         # Mendapatkan daftar unik dari nilai Carrier Out untuk pewarnaan
         carrier_out_values = df_filtered['Carrier Out'].unique()
@@ -29,98 +34,110 @@ if uploaded_file is not None:
                      for i, carrier in enumerate(carrier_out_values)}
         default_import_color = 'lightgray'
 
-        # Mengelompokkan data berdasarkan 'Row/bay (EXE)'
+        # Mengelompokkan data berdasarkan 'Row/bay (EXE)' untuk Export/Transhipment
         grouped_data = df_filtered.groupby('Row/bay (EXE)').agg(
-            carriers=('Carrier Out', list),
-            moves=('Move', list)
+            carriers=('Carrier Out', list)
         ).reset_index()
+        grouped_data['area'] = grouped_data['Row/bay (EXE)'].str[:1]
+        grouped_data['bay'] = grouped_data['Row/bay (EXE)'].str[1:]
 
-        import_locations = df_import['Row/bay (EXE)'].unique()
+        # Membuat dictionary untuk menyimpan data import per area
+        import_data = {}
+        for area in ['C', 'B', 'A']:
+            import_data[area] = df_import[df_import['Row/bay (EXE)'].str.startswith(area)]['Row/bay (EXE)'].unique()
 
         # Inisialisasi figure
         fig = go.Figure()
 
-        y_position = 0.95
-        y_increment = 0.3
-        x_start = 0
-        x_width = 0.2
-        x_increment = 0.25
+        x_position = 0.15
+        x_increment = 0.2
+        y_start = 0.9
+        y_increment_area = 0.3
+        y_increment_stack = 0.1
 
         annotations = []
 
-        # Membuat visualisasi untuk data Export dan Transhipment
-        for index, row in grouped_data.iterrows():
-            row_bay = row['Row/bay (EXE)']
-            carriers = row['carriers']
-            moves = row['moves']
-            num_carriers = len(carriers)
-            y_stack_start = y_position
+        for area_index, area in enumerate(['C', 'B', 'A']):
+            area_data = grouped_data[grouped_data['area'] == area].sort_values(by='bay')
+            current_y = y_start - (area_index * y_increment_area)
+            current_x = x_position
 
-            annotations.append(go.layout.Annotation(
-                x=x_start - 0.01,
-                y=y_position - (y_increment / 2),
-                text=row_bay,
-                showarrow=False,
-                yshift=0,
-                xanchor='right'
-            ))
+            # Visualisasi untuk Export/Transhipment
+            for index, row in area_data.iterrows():
+                row_bay = row['Row/bay (EXE)']
+                carriers = row['carriers']
+                num_carriers = len(carriers)
+                y_stack = current_y
 
-            for i, carrier in enumerate(carriers):
-                color = color_map.get(carrier, 'lightgray')
-                height = y_increment / num_carriers
-
-                fig.add_trace(go.Scatter(
-                    x=[x_start, x_start + x_width, x_start + x_width, x_start, x_start],
-                    y=[y_stack_start - (i * height), y_stack_start - (i * height),
-                       y_stack_start - ((i + 1) * height), y_stack_start - ((i + 1) * height),
-                       y_stack_start - (i * height)],
-                    fill='toself',
-                    fillcolor=color,
-                    mode='lines',
-                    line=dict(width=0),
-                    name=carrier # Untuk hover info (opsional)
+                annotations.append(go.layout.Annotation(
+                    x=current_x,
+                    y=current_y + (y_increment_stack / 2) * (1 - num_carriers),
+                    text=row_bay[3:], # Tampilkan hanya nomor bay
+                    showarrow=False,
+                    xanchor='center',
+                    yanchor='middle'
                 ))
 
-            x_start += x_increment
-            if (index + 1) % 4 == 0: # Untuk membuat baris baru setelah 4 Row/bay
-                x_start = 0
-                y_position -= y_increment * 1.5 # Tambah jarak antar kelompok baris
+                for i, carrier in enumerate(carriers):
+                    color = color_map.get(carrier, 'lightgray')
+                    fig.add_trace(go.Scatter(
+                        x=[current_x - 0.08, current_x + 0.08, current_x + 0.08, current_x - 0.08, current_x - 0.08],
+                        y=[y_stack - (i * y_increment_stack), y_stack - (i * y_increment_stack),
+                           y_stack - ((i + 1) * y_increment_stack), y_stack - ((i + 1) * y_increment_stack),
+                           y_stack - (i * y_increment_stack)],
+                        fill='toself',
+                        fillcolor=color,
+                        mode='lines',
+                        line=dict(width=0),
+                        name=carrier # Untuk hover info (opsional)
+                    ))
+                current_x += x_increment
 
-        # Membuat visualisasi untuk data Import (warna abu-abu)
-        for location in import_locations:
-            fig.add_trace(go.Scatter(
-                x=[0, x_width, x_width, 0, 0],
-                y=[y_position - (y_increment / 2) - 0.1, y_position - (y_increment / 2) - 0.1,
-                   y_position - (y_increment / 2) + 0.1, y_position - (y_increment / 2) + 0.1,
-                   y_position - (y_increment / 2) - 0.1],
-                fill='toself',
-                fillcolor=default_import_color,
-                mode='lines',
-                line=dict(width=0),
-                name='Import' # Untuk hover info (opsional)
-            ))
-            annotations.append(go.layout.Annotation(
-                x=-0.01,
-                y=y_position - (y_increment / 2),
-                text=location,
+            # Visualisasi untuk Import (di bawah setiap area)
+            import_locations_area = [loc[3:] for loc in import_data[area]]
+            if import_locations_area:
+                import_y = current_y - y_increment_stack * (len(area_data.max()) if not area_data.empty else 1) - 0.05
+                current_import_x = x_position
+                for bay in sorted(import_locations_area):
+                    fig.add_trace(go.Scatter(
+                        x=[current_import_x - 0.08, current_import_x + 0.08, current_import_x + 0.08, current_import_x - 0.08, current_import_x - 0.08],
+                        y=[import_y - 0.04, import_y - 0.04, import_y + 0.04, import_y + 0.04, import_y - 0.04],
+                        fill='toself',
+                        fillcolor=default_import_color,
+                        mode='lines',
+                        line=dict(width=0),
+                        name='Import'
+                    ))
+                    annotations.append(go.layout.Annotation(
+                        x=current_import_x,
+                        y=import_y,
+                        text=bay,
+                        showarrow=False,
+                        xanchor='center',
+                        yanchor='middle'
+                    ))
+                    current_import_x += x_increment
+
+            # Label Area
+            fig.add_annotation(
+                x=0.05,
+                y=current_y,
+                text=area,
                 showarrow=False,
-                yshift=0,
-                xanchor='right'
-            ))
-            # Kita perlu mekanisme penempatan yang lebih baik untuk import,
-            # karena lokasinya mungkin tumpang tindih dengan export/transhipment.
-            # Untuk saat ini, kita akan menempatkannya di baris yang sama,
-            # tapi ini perlu disesuaikan berdasarkan data Anda.
+                xanchor='left',
+                yanchor='middle',
+                font=dict(size=16, bold=True)
+            )
 
         # Mengatur layout
         fig.update_layout(
             showlegend=True,
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, x_start + x_width + 0.1]),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[y_position - y_increment * 2, 1]),
-            shapes=[], # Shapes akan ditambahkan melalui trace
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1]),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1]),
+            shapes=[],
             annotations=annotations,
-            title="Visualisasi Detail Berdasarkan Carrier Out dan Move",
-            margin=dict(l=120, r=20, t=50, b=20)
+            title="Visualisasi Layout Area Vertikal dan Row/Bay Horizontal",
+            margin=dict(l=80, r=20, t=50, b=20)
         )
 
         # Menampilkan visualisasi di Streamlit
