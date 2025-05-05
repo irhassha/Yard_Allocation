@@ -31,16 +31,22 @@ if uploaded_file:
 
     fig, ax = plt.subplots(figsize=(len(sorted_rowbays), 5))
 
-    for i, rowbay in enumerate(sorted_rowbays):
-        carriers = rowbay_carriers[rowbay]
-        unique_carriers = list(dict.fromkeys(carriers))  # keep order but remove duplicates
+    for i, rowbay in enumerate(displayed_rowbays):
+    entries = rowbay_map[rowbay]
+    
+    # Remove duplicate (move, carrier) pair
+    unique_entries = list(dict.fromkeys(entries))
 
-        for j, carrier in enumerate(unique_carriers):
-            carrier_str = str(carrier)
-            color = color_map.get(carrier_str, "#BBBBBB")  # fallback grey
-            ax.add_patch(plt.Rectangle((i, j), 1, 1, color=color))
+    for j, (move, carrier) in enumerate(unique_entries):
+        if move == "Import":
+            color = "#BBBBBB"  # abu-abu
+        else:
+            color = color_map.get(carrier, "#BBBBBB")
 
-        ax.text(i + 0.5, -0.5, rowbay, ha='center', va='top', fontsize=8, rotation=90)
+        ax.add_patch(plt.Rectangle((i, j), 1, 1, color=color))
+
+    ax.text(i + 0.5, -0.5, rowbay, ha='center', va='top', fontsize=8, rotation=90)
+
 
 
     ax.set_xlim(0, len(sorted_rowbays))
