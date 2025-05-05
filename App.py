@@ -133,7 +133,7 @@ if uploaded_file is not None:
                     weight="bold", # Properti yang benar
                     style="italic",
                     textcase="uppercase"
-                )
+                ))
 
         # Mengatur layout
         fig.update_layout(
