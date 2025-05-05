@@ -1,51 +1,85 @@
-import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+import matplotlib.patches as mpatches
+import matplotlib.colors as mcolors
 
-st.title("📦 Visualisasi Row/Bay per Area (EXE) - Horizontal Layout")
+# Load your Excel file here
+# df = pd.read_excel("your_file.xlsx")
+# Contoh kolom: ['Area', 'Row_Bay', 'Move', 'Carrier Out']
 
-uploaded_file = st.file_uploader("Upload File Excel", type=["xlsx"])
+# Placeholder data buat demo
+# Silakan ganti dengan df dari Excel
+example_data = {
+    'Area': ['A01', 'A01', 'A01', 'A02', 'A02', 'B01', 'B01', 'C01'],
+    'Row_Bay': ['A01-01', 'A01-01', 'A01-01', 'A02-02', 'A02-02', 'B01-01', 'B01-01', 'C01-01'],
+    'Move': ['Export', 'Transhipment', 'Import', 'Export', 'Import', 'Export', 'Import', 'Import'],
+    'Carrier Out': ['MSC', 'HPL', 'Any', 'MSC', 'Any', 'ONE', 'Any', 'Any']
+}
+df = pd.DataFrame(example_data)
 
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
+# Filter hanya Area yang ditentukan
+areas_to_show = [f"{l}{i:02}" for l in ['A', 'B', 'C'] for i in range(1, 9)]
+df = df[df['Area'].isin(areas_to_show)]
 
-    # Bersihkan dan rename kolom
-    df = df[['Area (EXE)', 'Move', 'Carrier Out', 'Row/bay (EXE)']]
-    df.columns = ['Area', 'Move', 'CarrierOut', 'RowBay']
+# Buat warna untuk tiap Carrier Out (selain Import yang abu-abu)
+carrier_colors = {}
+color_palette = list(mcolors.TABLEAU_COLORS.values()) + list(mcolors.CSS4_COLORS.values())
+color_index = 0
 
-    # Filter hanya Move yang diperlukan
-    df = df[df['Move'].isin(['Export', 'Transhipment', 'Import'])]
+def get_color(move, carrier):
+    global color_index
+    if move == 'Import':
+        return 'lightgrey'
+    if carrier not in carrier_colors:
+        carrier_colors[carrier] = color_palette[color_index % len(color_palette)]
+        color_index += 1
+    return carrier_colors[carrier]
 
-    # Buat palette warna CarrierOut (selain Import)
-    unique_carriers = df[df['Move'] != 'Import']['CarrierOut'].dropna().unique()
-    carrier_palette = sns.color_palette("tab10", len(unique_carriers))
-    carrier_colors = dict(zip(unique_carriers, carrier_palette))
+# Siapkan grid layout untuk Area dan Row_Bay
+grouped = df.groupby(['Area', 'Row_Bay'])
 
-    # Warna untuk Import
-    import_color = 'lightgrey'
+fig, ax = plt.subplots(figsize=(20, 10))
+row_height = 1
+block_width = 1
 
-    # Loop setiap Area
-    for area in sorted(df['Area'].dropna().unique()):
-        st.subheader(f"📍 Area: {area}")
-        area_df = df[df['Area'] == area]
+# Buat posisi per Area dan Row_Bay
+area_order = areas_to_show
+area_pos = {area: i for i, area in enumerate(area_order)}
 
-        rowbays = sorted(area_df['RowBay'].dropna().unique())
-        fig, ax = plt.subplots(figsize=(len(rowbays), 4))
+rowbay_per_area = df.groupby('Area')['Row_Bay'].unique().to_dict()
 
-        # Posisi stack tiap RowBay
-        for i, rowbay in enumerate(rowbays):
-            stack = area_df[area_df['RowBay'] == rowbay]
-            stack = stack.groupby(['CarrierOut', 'Move']).size().reset_index(name='Count')
+for area in area_order:
+    rowbays = sorted(set(rowbay_per_area.get(area, [])))
+    for y_offset, rowbay in enumerate(rowbays):
+        if (area, rowbay) not in grouped:
+            continue
+        stacks = grouped.get_group((area, rowbay))
+        for i, row in enumerate(stacks.itertuples()):
+            color = get_color(row._3, row._4)  # Move, Carrier Out
+            ax.add_patch(
+                mpatches.Rectangle(
+                    (area_pos[area], y_offset + i * 0.2),
+                    block_width, 0.2, facecolor=color, edgecolor='black')
+            )
+        ax.text(area_pos[area] + 0.5, y_offset + 0.3, rowbay,
+                ha='center', va='bottom', fontsize=6)
 
-            bottom = 0
-            for _, row in stack.iterrows():
-                color = import_color if row['Move'] == 'Import' else carrier_colors.get(row['CarrierOut'], 'black')
-                ax.bar(i, row['Count'], bottom=bottom, color=color, edgecolor='black')
-                bottom += row['Count']
+# Set axes
+ax.set_xlim(-0.5, len(area_order) - 0.5)
+ax.set_ylim(0, 20)
+ax.set_xticks([area_pos[a] + 0.5 for a in area_order])
+ax.set_xticklabels(area_order, rotation=90)
+ax.set_yticks([])
+ax.set_title('Stacked Block View per Row/Bay by Area (EXE)')
 
-        ax.set_xticks(range(len(rowbays)))
-        ax.set_xticklabels(rowbays, rotation=90)
-        ax.set_ylabel("Jumlah")
-        ax.set_title(f"Distribusi per Row/Bay - Area {area}")
-        st.pyplot(fig)
+# Buat legend
+legend_handles = [
+    mpatches.Patch(color='lightgrey', label='Import')
+] + [
+    mpatches.Patch(color=color, label=carrier)
+    for carrier, color in carrier_colors.items()
+]
+ax.legend(handles=legend_handles, loc='upper left', bbox_to_anchor=(1.01, 1.0))
+
+plt.tight_layout()
+plt.show()
