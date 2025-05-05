@@ -3,41 +3,49 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-st.title("📊 Visualisasi Stacked Row/Bay berdasarkan Carrier Out")
+st.title("📦 Visualisasi Row/Bay per Area (EXE) - Horizontal Layout")
 
 uploaded_file = st.file_uploader("Upload File Excel", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
 
-    # Rename dan pilih kolom penting
+    # Bersihkan dan rename kolom
     df = df[['Area (EXE)', 'Move', 'Carrier Out', 'Row/bay (EXE)']]
     df.columns = ['Area', 'Move', 'CarrierOut', 'RowBay']
 
-    # Filter hanya move Export / Transhipment / Import
+    # Filter hanya Move yang diperlukan
     df = df[df['Move'].isin(['Export', 'Transhipment', 'Import'])]
 
-    # Pilih Area
-    area_selected = st.selectbox("Pilih Area (EXE):", sorted(df['Area'].dropna().unique()))
-    area_df = df[df['Area'] == area_selected]
+    # Buat palette warna CarrierOut (selain Import)
+    unique_carriers = df[df['Move'] != 'Import']['CarrierOut'].dropna().unique()
+    carrier_palette = sns.color_palette("tab10", len(unique_carriers))
+    carrier_colors = dict(zip(unique_carriers, carrier_palette))
 
-    rowbays = area_df['RowBay'].unique()
-    carrier_palette = sns.color_palette("Set2", len(area_df['CarrierOut'].dropna().unique()))
-    carrier_colors = dict(zip(area_df['CarrierOut'].dropna().unique(), carrier_palette))
+    # Warna untuk Import
+    import_color = 'lightgrey'
 
-    fig, ax = plt.subplots(figsize=(10, len(rowbays) * 0.6))
+    # Loop setiap Area
+    for area in sorted(df['Area'].dropna().unique()):
+        st.subheader(f"📍 Area: {area}")
+        area_df = df[df['Area'] == area]
 
-    for idx, rowbay in enumerate(sorted(rowbays)):
-        group = area_df[area_df['RowBay'] == rowbay]
-        grouped = group.groupby(['CarrierOut', 'Move']).size().reset_index(name='Count')
+        rowbays = sorted(area_df['RowBay'].dropna().unique())
+        fig, ax = plt.subplots(figsize=(len(rowbays), 4))
 
-        bottom = 0
-        for _, row in grouped.iterrows():
-            color = 'lightgrey' if row['Move'] == 'Import' else carrier_colors.get(row['CarrierOut'], 'black')
-            ax.barh(rowbay, row['Count'], left=bottom, color=color)
-            bottom += row['Count']
+        # Posisi stack tiap RowBay
+        for i, rowbay in enumerate(rowbays):
+            stack = area_df[area_df['RowBay'] == rowbay]
+            stack = stack.groupby(['CarrierOut', 'Move']).size().reset_index(name='Count')
 
-    ax.set_title(f"Distribusi Carrier Out per RowBay - Area {area_selected}")
-    ax.set_xlabel("Jumlah")
-    ax.set_ylabel("Row/Bay")
-    st.pyplot(fig)
+            bottom = 0
+            for _, row in stack.iterrows():
+                color = import_color if row['Move'] == 'Import' else carrier_colors.get(row['CarrierOut'], 'black')
+                ax.bar(i, row['Count'], bottom=bottom, color=color, edgecolor='black')
+                bottom += row['Count']
+
+        ax.set_xticks(range(len(rowbays)))
+        ax.set_xticklabels(rowbays, rotation=90)
+        ax.set_ylabel("Jumlah")
+        ax.set_title(f"Distribusi per Row/Bay - Area {area}")
+        st.pyplot(fig)
