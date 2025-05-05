@@ -1,81 +1,83 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from collections import defaultdict
+import plotly.graph_objects as go
 
-st.set_page_config(layout="wide")
-st.title("📦 Visualisasi Row/Bay per Carrier Out")
+# Judul aplikasi Streamlit
+st.title("Visualisasi Data Berdasarkan Carrier Out")
 
-uploaded_file = st.file_uploader("Upload file Excel kamu", type=["xlsx"])
+# Instruksi untuk mengunggah file Excel
+uploaded_file = st.file_uploader("Unggah file Excel Anda", type=["xlsx"])
 
-if uploaded_file:
-    df = pd.read_excel(uploaded_file)
-    df.columns = df.columns.str.strip()
+if uploaded_file is not None:
+    try:
+        # Membaca data dari file Excel
+        df = pd.read_excel(uploaded_file)
 
-    df = df.dropna(subset=["Row/bay (EXE)"])
-    df = df[df["Move"].isin(["Export", "Transhipment", "Import"])]
+        st.subheader("Data Anda:")
+        st.dataframe(df)
 
-    if "Area (EXE)" not in df.columns:
-        st.error("Kolom 'Area (EXE)' tidak ditemukan di file.")
-        st.stop()
+        # --- Membuat Visualisasi ---
+        st.subheader("Visualisasi Berdasarkan Carrier Out:")
 
-    available_areas = df["Area (EXE)"].dropna().unique()
-    selected_areas = st.multiselect("Pilih Area yang ingin ditampilkan", options=sorted(available_areas), default=sorted(available_areas))
+        # Mendapatkan daftar unik dari nilai Carrier Out untuk pewarnaan
+        carrier_out_values = df['Carrier Out'].unique()
+        color_map = {carrier: f'rgb({i*50 % 256}, {(i+1)*70 % 256}, {(i+2)*90 % 256})'
+                     for i, carrier in enumerate(carrier_out_values)}
 
-    export_carriers = df[df["Move"].isin(["Export", "Transhipment"])]["Carrier Out"].dropna().unique()
-    colors = plt.cm.tab20.colors
-    color_map = {str(carrier): colors[i % len(colors)] for i, carrier in enumerate(export_carriers)}
+        # Membuat list untuk menyimpan semua shape (kotak)
+        shapes = []
+        y_position = 0.8  # Posisi awal y untuk baris pertama
+        y_increment = 0.2 # Jarak antar baris visualisasi
 
-    for area in selected_areas:
-        st.subheader(f"Area: {area}")
-        df_area = df[df["Area (EXE)"] == area]
+        # Membuat list untuk menyimpan anotasi (label Row/bay)
+        annotations = []
 
-        rowbay_map = defaultdict(list)
-        for _, row in df_area.iterrows():
-            rowbay = str(row["Row/bay (EXE)"])
-            move = row["Move"]
-            carrier = str(row["Carrier Out"]) if pd.notna(row["Carrier Out"]) else "UNKNOWN"
-            rowbay_map[rowbay].append((move, carrier))
+        for index, row in df.iterrows():
+            carrier = row['Carrier Out']
+            row_bay = row['Row/bay (EXE)']
+            color = color_map.get(carrier, 'lightgray') # Default warna jika Carrier Out tidak dikenali
 
-        # Buat list unik Row/Bay dari data (diurutkan secara logis)
-        all_rowbays = list(rowbay_map.keys())
-        bay_ids = sorted(set(rb.split("-")[0] for rb in all_rowbays))
-        col_ids = sorted(set(rb.split("-")[1] for rb in all_rowbays), key=lambda x: int(x))
+            # Membuat shape (kotak) untuk setiap baris
+            shapes.append(go.layout.Shape(
+                type="rect",
+                x0=0,
+                x1=1, # Lebar visualisasi (bisa disesuaikan)
+                y0=y_position - 0.1,
+                y1=y_position + 0.1,
+                fillcolor=color,
+                opacity=0.8,
+                line=dict(width=0)
+            ))
 
-        n_rows = len(bay_ids)
-        n_cols = len(col_ids)
+            # Membuat anotasi untuk label Row/bay
+            annotations.append(go.layout.Annotation(
+                x=-0.01, # Posisi x label
+                y=y_position,
+                text=row_bay,
+                showarrow=False,
+                yshift=0,
+                xanchor='right'
+            ))
 
-        fig, ax = plt.subplots(figsize=(n_cols * 1.1, n_rows * 1))
+            y_position -= y_increment
 
-        for y, bay in enumerate(bay_ids):
-            for x, col in enumerate(col_ids):
-                full_id = f"{bay}-{col}"
-                entries = rowbay_map.get(full_id, [])
-                entries = list(dict.fromkeys(entries))  # Hapus duplikat
+        # Membuat layout untuk visualisasi
+        layout = go.Layout(
+            shapes=shapes,
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[y_position - 0.2, 1]),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.1, 1.1]),
+            annotations=annotations,
+            title="Visualisasi Data Berdasarkan Carrier Out",
+            margin=dict(l=100, r=20, t=50, b=20) # Memberikan margin kiri untuk label
+        )
 
-                # Stack warna ke atas jika lebih dari satu
-                for i, (move, carrier) in enumerate(reversed(entries)):
-                    color = "#BBBBBB" if move == "Import" else color_map.get(carrier, "#BBBBBB")
-                    ax.add_patch(plt.Rectangle((x, y + i * 0.2), 1, 0.2, color=color))
+        # Membuat figure Plotly
+        fig = go.Figure(layout=layout)
 
-                # Border kotak
-                ax.add_patch(plt.Rectangle((x, y), 1, 1, fill=False, edgecolor='black'))
+        # Menampilkan visualisasi di Streamlit
+        st.plotly_chart(fig)
 
-                # Label RowBay
-                if entries:
-                    ax.text(x + 0.5, y + 0.5, full_id, ha="center", va="center", fontsize=7)
-
-        ax.set_xlim(0, n_cols)
-        ax.set_ylim(0, n_rows + 1)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.invert_yaxis()
-        ax.set_aspect('equal')
-
-        # Legend
-        legend_handles = [mpatches.Patch(color=color_map[c], label=c) for c in color_map]
-        legend_handles.append(mpatches.Patch(color="#BBBBBB", label="Import / Unknown"))
-        ax.legend(handles=legend_handles, bbox_to_anchor=(1.05, 1), loc='upper left', title="Carrier Out")
-
-        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Terjadi kesalahan: {e}")
+else:
+    st.info("Silakan unggah file Excel untuk melihat visualisasi.")
