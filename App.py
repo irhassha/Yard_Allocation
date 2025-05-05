@@ -126,8 +126,14 @@ if uploaded_file is not None:
                 showarrow=False,
                 xanchor='left',
                 yanchor='middle',
-                font=dict(size=16, bold=True)
-            )
+                font=dict(
+                    family="Courier New, monospace",
+                    size=16,
+                    color="crimson",
+                    weight="bold", # Properti yang benar
+                    style="italic",
+                    textcase="uppercase"
+                )
 
         # Mengatur layout
         fig.update_layout(
