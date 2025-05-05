@@ -39,7 +39,8 @@ if uploaded_file is not None:
             carriers=('Carrier Out', list)
         ).reset_index()
         grouped_data['area'] = grouped_data['Row/bay (EXE)'].str[:1]
-        grouped_data['bay'] = grouped_data['Row/bay (EXE)'].str[1:].astype(int) # Convert ke integer untuk sorting
+        grouped_data['bay_str'] = grouped_data['Row/bay (EXE)'].str[1:]
+        grouped_data['bay'] = grouped_data['bay_str'].str.split('-').str[0].astype(int) # Perbaikan di sini
 
         # Membuat dictionary untuk menyimpan data import per area
         import_data = {}
