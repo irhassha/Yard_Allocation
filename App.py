@@ -16,62 +16,66 @@ if uploaded_file:
     df = df.dropna(subset=["Row/bay (EXE)"])
     df = df[df["Move"].isin(["Export", "Transhipment", "Import"])]
 
-    # Filter Area
-    if "Area (EXE)" in df.columns:
-        available_areas = df["Area (EXE)"].dropna().unique()
-        selected_areas = st.multiselect("Pilih Area yang ingin ditampilkan", options=sorted(available_areas), default=sorted(available_areas))
+    if "Area (EXE)" not in df.columns:
+        st.error("Kolom 'Area (EXE)' tidak ditemukan di file.")
+        st.stop()
 
-        export_carriers = df[df["Move"].isin(["Export", "Transhipment"])]["Carrier Out"].dropna().unique()
-        colors = plt.cm.tab20.colors
-        color_map = {str(carrier): colors[i % len(colors)] for i, carrier in enumerate(export_carriers)}
+    available_areas = df["Area (EXE)"].dropna().unique()
+    selected_areas = st.multiselect("Pilih Area yang ingin ditampilkan", options=sorted(available_areas), default=sorted(available_areas))
 
-        for area in selected_areas:
-            st.subheader(f"Area: {area}")
-            df_area = df[df["Area (EXE)"] == area]
+    export_carriers = df[df["Move"].isin(["Export", "Transhipment"])]["Carrier Out"].dropna().unique()
+    colors = plt.cm.tab20.colors
+    color_map = {str(carrier): colors[i % len(colors)] for i, carrier in enumerate(export_carriers)}
 
-            rowbay_map = defaultdict(list)
-            for _, row in df_area.iterrows():
-                rowbay = row["Row/bay (EXE)"]
-                move = row["Move"]
-                carrier = str(row["Carrier Out"]) if pd.notna(row["Carrier Out"]) else "UNKNOWN"
-                rowbay_map[rowbay].append((move, carrier))
+    for area in selected_areas:
+        st.subheader(f"Area: {area}")
+        df_area = df[df["Area (EXE)"] == area]
 
-            # Grid A01–C08
-            rows = [f"{i:02}" for i in range(1, 9)]
-            cols = ["A", "B", "C"]
-            grid_order = [f"{col}{row}" for row in reversed(rows) for col in reversed(cols)]
+        rowbay_map = defaultdict(list)
+        for _, row in df_area.iterrows():
+            rowbay = str(row["Row/bay (EXE)"])
+            move = row["Move"]
+            carrier = str(row["Carrier Out"]) if pd.notna(row["Carrier Out"]) else "UNKNOWN"
+            rowbay_map[rowbay].append((move, carrier))
 
-            fig, ax = plt.subplots(figsize=(8, 10))
+        # Buat list unik Row/Bay dari data (diurutkan secara logis)
+        all_rowbays = list(rowbay_map.keys())
+        bay_ids = sorted(set(rb.split("-")[0] for rb in all_rowbays))
+        col_ids = sorted(set(rb.split("-")[1] for rb in all_rowbays), key=lambda x: int(x))
 
-            for rowbay in grid_order:
-                if rowbay not in rowbay_map:
-                    continue
+        n_rows = len(bay_ids)
+        n_cols = len(col_ids)
 
-                col_letter = rowbay[0]
-                row_number = rowbay[1:]
-                col = {"A": 0, "B": 1, "C": 2}[col_letter]
-                row = 8 - int(row_number)
+        fig, ax = plt.subplots(figsize=(n_cols * 1.1, n_rows * 1))
 
-                entries = rowbay_map[rowbay]
-                unique_entries = list(dict.fromkeys(entries))
+        for y, bay in enumerate(bay_ids):
+            for x, col in enumerate(col_ids):
+                full_id = f"{bay}-{col}"
+                entries = rowbay_map.get(full_id, [])
+                entries = list(dict.fromkeys(entries))  # Hapus duplikat
 
-                for j, (move, carrier) in enumerate(unique_entries):
+                # Stack warna ke atas jika lebih dari satu
+                for i, (move, carrier) in enumerate(reversed(entries)):
                     color = "#BBBBBB" if move == "Import" else color_map.get(carrier, "#BBBBBB")
-                    ax.add_patch(plt.Rectangle((col, row - j * 0.2), 1, 0.2, color=color))
+                    ax.add_patch(plt.Rectangle((x, y + i * 0.2), 1, 0.2, color=color))
 
-                ax.text(col + 0.5, row - 0.5, rowbay, ha='center', va='top', fontsize=8)
+                # Border kotak
+                ax.add_patch(plt.Rectangle((x, y), 1, 1, fill=False, edgecolor='black'))
 
-            ax.set_xlim(0, 3)
-            ax.set_ylim(-0.5, 8)
-            ax.set_xticks(range(3))
-            ax.set_xticklabels(["A", "B", "C"])
-            ax.set_yticks(range(8))
-            ax.set_yticklabels(list(reversed([f"{i:02}" for i in range(1, 9)])))
-            ax.invert_yaxis()
-            ax.grid(True)
+                # Label RowBay
+                if entries:
+                    ax.text(x + 0.5, y + 0.5, full_id, ha="center", va="center", fontsize=7)
 
-            legend_handles = [mpatches.Patch(color=color_map[c], label=c) for c in color_map]
-            legend_handles.append(mpatches.Patch(color="#BBBBBB", label="Import / Unknown"))
-            ax.legend(handles=legend_handles, bbox_to_anchor=(1.05, 1), loc='upper left', title="Carrier Out")
+        ax.set_xlim(0, n_cols)
+        ax.set_ylim(0, n_rows + 1)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.invert_yaxis()
+        ax.set_aspect('equal')
 
-            st.pyplot(fig)
+        # Legend
+        legend_handles = [mpatches.Patch(color=color_map[c], label=c) for c in color_map]
+        legend_handles.append(mpatches.Patch(color="#BBBBBB", label="Import / Unknown"))
+        ax.legend(handles=legend_handles, bbox_to_anchor=(1.05, 1), loc='upper left', title="Carrier Out")
+
+        st.pyplot(fig)
