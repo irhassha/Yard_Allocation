@@ -13,13 +13,16 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df.columns = df.columns.str.strip()
 
-    # Drop baris tanpa Row/bay
     df = df.dropna(subset=["Row/bay (EXE)"])
-
-    # Filter hanya Move yang kita pedulikan
     df = df[df["Move"].isin(["Export", "Transhipment", "Import"])]
 
-    # Buat list RowBay dan pasangan (Move, Carrier)
+    # Filter Area
+    if "Area (EXE)" in df.columns:
+        available_areas = df["Area (EXE)"].dropna().unique()
+        selected_areas = st.multiselect("Pilih Area yang ingin ditampilkan", options=sorted(available_areas), default=sorted(available_areas))
+        df = df[df["Area (EXE)"].isin(selected_areas)]
+
+    # Buat mapping data
     rowbay_map = defaultdict(list)
     for _, row in df.iterrows():
         rowbay = row["Row/bay (EXE)"]
@@ -27,41 +30,44 @@ if uploaded_file:
         carrier = str(row["Carrier Out"]) if pd.notna(row["Carrier Out"]) else "UNKNOWN"
         rowbay_map[rowbay].append((move, carrier))
 
-    sorted_rowbays = sorted(rowbay_map.keys())
+    # Buat grid A01–C08
+    rows = [f"{i:02}" for i in range(1, 9)]
+    cols = ["A", "B", "C"]
+    grid_order = [f"{col}{row}" for row in reversed(rows) for col in reversed(cols)]  # C08 → A01
+    displayed_rowbays = [rb for rb in grid_order if rb in rowbay_map]
 
-    # Siapkan color map hanya untuk Export & Transhipment
+    # Warnain hanya Export & Transhipment
     export_carriers = df[df["Move"].isin(["Export", "Transhipment"])]["Carrier Out"].dropna().unique()
     colors = plt.cm.tab20.colors
     color_map = {str(carrier): colors[i % len(colors)] for i, carrier in enumerate(export_carriers)}
 
-    # Slider jumlah Row/Bay yang ditampilkan
-    max_display = st.slider("Jumlah Row/Bay yang ditampilkan", min_value=10, max_value=len(sorted_rowbays), value=50)
-    displayed_rowbays = sorted_rowbays[:max_display]
+    fig, ax = plt.subplots(figsize=(8, 10))
 
-    # Ukuran figure fleksibel
-    fig_width = min(20, len(displayed_rowbays))
-    fig_height = 6
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    for rowbay in displayed_rowbays:
+        col_letter = rowbay[0]
+        row_number = rowbay[1:]
+        col = {"A": 0, "B": 1, "C": 2}[col_letter]
+        row = 8 - int(row_number)
 
-    for i, rowbay in enumerate(displayed_rowbays):
         entries = rowbay_map[rowbay]
-        unique_entries = list(dict.fromkeys(entries))  # hapus duplikat
+        unique_entries = list(dict.fromkeys(entries))
 
         for j, (move, carrier) in enumerate(unique_entries):
-            if move == "Import":
-                color = "#BBBBBB"  # abu-abu
-            else:
-                color = color_map.get(carrier, "#BBBBBB")
+            color = "#BBBBBB" if move == "Import" else color_map.get(carrier, "#BBBBBB")
+            ax.add_patch(plt.Rectangle((col, row - j * 0.2), 1, 0.2, color=color))
 
-            ax.add_patch(plt.Rectangle((i, j), 1, 1, color=color))
+        ax.text(col + 0.5, row - 0.5, rowbay, ha='center', va='top', fontsize=8)
 
-        ax.text(i + 0.5, -0.5, rowbay, ha='center', va='top', fontsize=8, rotation=90)
+    ax.set_xlim(0, 3)
+    ax.set_ylim(-0.5, 8)
+    ax.set_xticks(range(3))
+    ax.set_xticklabels(["A", "B", "C"])
+    ax.set_yticks(range(8))
+    ax.set_yticklabels(list(reversed([f"{i:02}" for i in range(1, 9)])))
+    ax.invert_yaxis()
+    ax.grid(True)
 
-    ax.set_xlim(0, len(displayed_rowbays))
-    ax.set_ylim(0, max(len(v) for v in rowbay_map.values()) + 1)
-    ax.axis("off")
-
-    # Buat legend
+    # Legend
     legend_handles = [mpatches.Patch(color=color_map[c], label=c) for c in color_map]
     legend_handles.append(mpatches.Patch(color="#BBBBBB", label="Import / Unknown"))
     ax.legend(handles=legend_handles, bbox_to_anchor=(1.05, 1), loc='upper left', title="Carrier Out")
