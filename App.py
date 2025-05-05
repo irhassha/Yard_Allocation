@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Judul aplikasi Streamlit
-st.title("Visualisasi Layout Area Vertikal dan Row/Bay Horizontal")
+st.title("Visualisasi Yard Allocation")
 
 # Instruksi untuk mengunggah file Excel
 uploaded_file = st.file_uploader("Unggah file Excel Anda", type=["xlsx"])
@@ -39,7 +39,7 @@ if uploaded_file is not None:
             carriers=('Carrier Out', list)
         ).reset_index()
         grouped_data['area'] = grouped_data['Row/bay (EXE)'].str[:1]
-        grouped_data['bay'] = grouped_data['Row/bay (EXE)'].str[1:]
+        grouped_data['bay'] = grouped_data['Row/bay (EXE)'].str[1:].astype(int) # Convert ke integer untuk sorting
 
         # Membuat dictionary untuk menyimpan data import per area
         import_data = {}
@@ -50,10 +50,10 @@ if uploaded_file is not None:
         fig = go.Figure()
 
         x_position = 0.15
-        x_increment = 0.2
+        x_increment = 0.15
         y_start = 0.9
-        y_increment_area = 0.3
-        y_increment_stack = 0.1
+        y_increment_area = 0.4
+        y_increment_stack = 0.15
 
         annotations = []
 
@@ -75,13 +75,14 @@ if uploaded_file is not None:
                     text=row_bay[3:], # Tampilkan hanya nomor bay
                     showarrow=False,
                     xanchor='center',
-                    yanchor='middle'
+                    yanchor='middle',
+                    font=dict(size=10)
                 ))
 
                 for i, carrier in enumerate(carriers):
                     color = color_map.get(carrier, 'lightgray')
                     fig.add_trace(go.Scatter(
-                        x=[current_x - 0.08, current_x + 0.08, current_x + 0.08, current_x - 0.08, current_x - 0.08],
+                        x=[current_x - 0.05, current_x + 0.05, current_x + 0.05, current_x - 0.05, current_x - 0.05],
                         y=[y_stack - (i * y_increment_stack), y_stack - (i * y_increment_stack),
                            y_stack - ((i + 1) * y_increment_stack), y_stack - ((i + 1) * y_increment_stack),
                            y_stack - (i * y_increment_stack)],
@@ -89,24 +90,26 @@ if uploaded_file is not None:
                         fillcolor=color,
                         mode='lines',
                         line=dict(width=0),
-                        name=carrier # Untuk hover info (opsional)
+                        name=carrier, # Untuk hover info (opsional)
+                        showlegend=False
                     ))
                 current_x += x_increment
 
             # Visualisasi untuk Import (di bawah setiap area)
-            import_locations_area = [loc[3:] for loc in import_data[area]]
+            import_locations_area = sorted([loc[3:] for loc in import_data[area]], key=int)
             if import_locations_area:
-                import_y = current_y - y_increment_stack * (len(area_data.max()) if not area_data.empty else 1) - 0.05
+                import_y = current_y - y_increment_stack * 1 - 0.05 # Sesuaikan posisi Y
                 current_import_x = x_position
-                for bay in sorted(import_locations_area):
+                for bay in import_locations_area:
                     fig.add_trace(go.Scatter(
-                        x=[current_import_x - 0.08, current_import_x + 0.08, current_import_x + 0.08, current_import_x - 0.08, current_import_x - 0.08],
+                        x=[current_import_x - 0.05, current_import_x + 0.05, current_import_x + 0.05, current_import_x - 0.05, current_import_x - 0.05],
                         y=[import_y - 0.04, import_y - 0.04, import_y + 0.04, import_y + 0.04, import_y - 0.04],
                         fill='toself',
                         fillcolor=default_import_color,
                         mode='lines',
                         line=dict(width=0),
-                        name='Import'
+                        name='Import',
+                        showlegend=False
                     ))
                     annotations.append(go.layout.Annotation(
                         x=current_import_x,
@@ -114,7 +117,8 @@ if uploaded_file is not None:
                         text=bay,
                         showarrow=False,
                         xanchor='center',
-                        yanchor='middle'
+                        yanchor='middle',
+                        font=dict(size=10)
                     ))
                     current_import_x += x_increment
 
@@ -126,14 +130,8 @@ if uploaded_file is not None:
                 showarrow=False,
                 xanchor='left',
                 yanchor='middle',
-                font=dict(
-                    family="Courier New, monospace",
-                    size=16,
-                    color="crimson",
-                    weight="bold", # Properti yang benar
-                    style="italic",
-                    textcase="uppercase"
-                ))
+                font=dict(size=12, weight='bold')
+            )
 
         # Mengatur layout
         fig.update_layout(
@@ -142,12 +140,12 @@ if uploaded_file is not None:
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1]),
             shapes=[],
             annotations=annotations,
-            title="Visualisasi Layout Area Vertikal dan Row/Bay Horizontal",
+            title="Visualisasi Yard Allocation Berdasarkan Area dan Row/Bay",
             margin=dict(l=80, r=20, t=50, b=20)
         )
 
         # Menampilkan visualisasi di Streamlit
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
         st.error(f"Terjadi kesalahan: {e}")
