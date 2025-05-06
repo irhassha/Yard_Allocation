@@ -31,9 +31,8 @@ if not required_cols.issubset(df.columns):
 def in_range(area):
     if isinstance(area, str) and len(area) == 3:
         prefix, num = area[0], area[1:]
-        return prefix in {'A','B','C'} and num.isdigit() and 1 <= int(num) <= 8
+        return prefix in {'A', 'B', 'C'} and num.isdigit() and 1 <= int(num) <= 8
     return False
-
 
 df = df[df['Area'].apply(in_range)]
 if df.empty:
@@ -47,11 +46,17 @@ carrier_color_map = {c: palette[i % len(palette)] for i, c in enumerate(all_carr
 gray = '#555555'
 yellow = '#FFFF99'  # Warna untuk Import
 
-# —————— Pilih carrier (Export & Transhipment) ——————
+# —————— Sidebar: Pilih Move ——————
+st.sidebar.markdown("## Filter Move")
+move_options = ['Export', 'Transhipment', 'Import']
+selected_moves = st.sidebar.multiselect(
+    "Tampilkan Move:", options=move_options, default=['Export', 'Transhipment']
+)
+
+# —————— Sidebar: Pilih Carrier (Export & Transhipment) ——————
 valid_moves = ['Export', 'Transhipment']
 export_trans_carriers = sorted(df[df['Move'].isin(valid_moves)]['Carrier Out'].unique())
 st.sidebar.markdown("## Highlight Carrier Out")
-# Tombol Select All / Clear All
 col_sa, col_ca = st.sidebar.columns(2)
 if col_sa.button("Select All"):
     selected = export_trans_carriers.copy()
@@ -67,27 +72,36 @@ else:
 # —————— Layout 3 kolom per prefix Area ——————
 cols = st.columns(3)
 prefixes = ['C', 'B', 'A']
-
 for col, prefix in zip(cols, prefixes):
     with col:
         st.markdown(f"**AREA {prefix}**")
-        # Iterate area descending (A08..A01, etc)
         for area in sorted(df['Area'].unique(), reverse=True):
             if not area.startswith(prefix):
                 continue
-            df_area = df[df['Area'] == area]
-            # Ambil unique entries untuk Export & Transhipment saja
-            unique_rows = (
-                df_area[df_area['Move'].isin(valid_moves)][['Row_Bay','Carrier Out']]
-                .drop_duplicates()
-                .reset_index(drop=True)
-            )
+            df_area = df[(df['Area'] == area) & (df['Move'].isin(selected_moves))]
+            # Unique entries per Row_Bay + Carrier Out + Move
+            unique_rows = df_area[['Row_Bay', 'Carrier Out', 'Move']].drop_duplicates()
             fig = go.Figure()
             used = set()
-            # Urutkan Row_Bay descending
+            # Row_Bay descending order
             row_bays = sorted(unique_rows['Row_Bay'].unique(), reverse=True)
             for rb in row_bays:
-                carriers = unique_rows[unique_rows['Row_Bay'] == rb]['Carrier Out'].unique().tolist()
+                subset = unique_rows[unique_rows['Row_Bay'] == rb]
+                # Check import
+                has_imp = 'Import' in selected_moves and 'Import' in subset['Move'].values
+                # Export & Tranship carriers
+                carriers = subset[subset['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
+                # Determine segment count
+                segments = len(carriers) + (1 if has_imp else 0)
+                # Uniform height
+                h = 1
+                # Import segment
+                if has_imp:
+                    fig.add_trace(go.Bar(
+                        x=[rb], y=[h], name='Import',
+                        marker_color=yellow, opacity=1.0, showlegend=False
+                    ))
+                # Export/tranship segments
                 for carrier in carriers:
                     is_sel = carrier in selected
                     color = carrier_color_map.get(carrier, gray) if is_sel else gray
@@ -96,22 +110,19 @@ for col, prefix in zip(cols, prefixes):
                     if showleg:
                         used.add(carrier)
                     fig.add_trace(go.Bar(
-                        x=[rb], y=[1], name=carrier,
-                        marker_color=color, opacity=opacity,
-                        showlegend=showleg
+                        x=[rb], y=[h], name=carrier,
+                        marker_color=color, opacity=opacity, showlegend=showleg
                     ))
+            # Layout
             fig.update_layout(
                 barmode='stack',
                 template='plotly_dark',
                 xaxis=dict(
-                    title='',
-                    showgrid=False,
-                    categoryorder='array',
-                    categoryarray=row_bays
+                    title='', showgrid=False,
+                    categoryorder='array', categoryarray=row_bays
                 ),
                 yaxis=dict(title='', showgrid=False, showticklabels=False),
                 legend_title='Carrier Out',
-                margin=dict(t=10, b=10, l=10, r=10),
-                height=260
+                margin=dict(t=10, b=10, l=10, r=10), height=260
             )
             st.plotly_chart(fig, use_container_width=True)
