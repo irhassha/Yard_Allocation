@@ -27,8 +27,6 @@ data = {
         'B02-03','B02-03','B02-07'
     ]
 }
-
-# —————— Load DataFrame ——————
 df = pd.DataFrame(data)
 
 # —————— Setup warna ——————
@@ -45,39 +43,43 @@ selected = st.sidebar.multiselect(
     default=unique_carriers
 )
 
-# —————— Plot per Area ——————
-for area in sorted(df['Area'].unique()):
-    df_area = df[df['Area'] == area]
-    df_grp = df_area.groupby(['Row_Bay','Carrier Out']).size().unstack(fill_value=0)
+# —————— Layout 2 kolom berdasarkan prefix Area ——————
+colB, colA = st.columns(2)
 
-    fig = go.Figure()
-    for carrier in df_grp.columns:
-        is_sel = carrier in selected
-        fig.add_trace(go.Bar(
-            x=df_grp.index,
-            y=df_grp[carrier],
-            name=carrier,
-            marker_color=carrier_color_map[carrier] if is_sel else gray,
-            opacity=1.0 if is_sel else 0.3
-        ))
+groups = {'B': colB, 'A': colA}
+for prefix, col in groups.items():
+    with col:
+        # Judul kolom AREA B / AREA A
+        st.markdown(f"**AREA {prefix}**", unsafe_allow_html=True)
 
-    fig.update_layout(
-        barmode='stack',
-        template='plotly_dark',
-        xaxis=dict(title='', showgrid=False),
-        yaxis=dict(title='', showgrid=True, showticklabels=False),
-        legend_title='Carrier Out',
-        margin=dict(t=20, b=20, l=20, r=20),
-        height=350
-    )
+        # Loop setiap kode Area yang diawali prefix
+        for area in sorted(df['Area'].unique()):
+            if not area.startswith(prefix):
+                continue
+            df_area = df[df['Area'] == area]
+            df_grp = df_area.groupby(['Row_Bay', 'Carrier Out']).size().unstack(fill_value=0)
 
-    fig.add_annotation(
-        text=area,
-        xref='paper', yref='paper',
-        x=0.98, y=0.02,
-        showarrow=False,
-        font=dict(size=14, color='lightgray'),
-        xanchor='right', yanchor='bottom'
-    )
+            # Buat figure per Area
+            fig = go.Figure()
+            for carrier in df_grp.columns:
+                is_sel = carrier in selected
+                fig.add_trace(go.Bar(
+                    x=df_grp.index,
+                    y=df_grp[carrier],
+                    name=carrier,
+                    marker_color=carrier_color_map[carrier] if is_sel else gray,
+                    opacity=1.0 if is_sel else 0.3
+                ))
 
-    st.plotly_chart(fig, use_container_width=True)
+            fig.update_layout(
+                barmode='stack',
+                template='plotly_dark',
+                xaxis=dict(title='', showgrid=False),
+                yaxis=dict(title='', showgrid=True, showticklabels=False),
+                showlegend=False,
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=250
+            )
+
+            # Tampilkan kode Area di bawah grafik (dialig nanti optional)
+            st.plotly_chart(fig, use_container_width=True)
