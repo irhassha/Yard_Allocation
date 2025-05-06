@@ -102,7 +102,7 @@ legend_fig.update_layout(
     height=180,
     margin=dict(t=20, b=20, l=10, r=10)
 )
-st.plotly_chart(legend_fig, use_container_width=True)(legend_fig, use_container_width=True)
+st.plotly_chart(legend_fig, use_container_width=True)
 
 # —————— Layout 3 kolom per prefix Area ——————
 cols = st.columns(3)
