@@ -119,4 +119,4 @@ for col, prefix in zip(cols, prefixes):
                 xaxis=dict(categoryorder='array', categoryarray=row_order, showgrid=False, title=''),
                 yaxis=dict(visible=False), margin=dict(t=10,b=10,l=0,r=0), height=250
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=False, width=300, height=250)
