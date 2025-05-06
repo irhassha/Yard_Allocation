@@ -34,6 +34,7 @@ def in_range(area):
         return prefix in {'A','B','C'} and num.isdigit() and 1 <= int(num) <= 8
     return False
 
+
 df = df[df['Area'].apply(in_range)]
 if df.empty:
     st.warning("Tidak ada data untuk Area A01-A08, B01-B08, atau C01-C08 setelah filter.")
@@ -56,55 +57,53 @@ selected = st.sidebar.multiselect(
     default=export_trans_carriers
 )
 
-# —————— Siapkan layout 3 kolom berdasarkan prefix Area ——————
+# —————— Layout 3 kolom per prefix Area ——————
 cols = st.columns(3)
-prefixes = ['C', 'B', 'A']  # urutan kolom
+prefixes = ['C', 'B', 'A']
 
 for col, prefix in zip(cols, prefixes):
     with col:
         st.markdown(f"**AREA {prefix}**")
-        areas = sorted(df['Area'].unique())
-        for area in areas:
+        for area in sorted(df['Area'].unique()):
             if not area.startswith(prefix):
                 continue
-            # Data unik per Row_Bay, Carrier Out, Move
             df_area = df[df['Area'] == area]
+            # Ambil unique per Row_Bay, Carrier Out, Move
             unique_rows = (
-                df_area[['Row_Bay','Carrier Out','Move']]
+                df_area[['Row_Bay', 'Carrier Out', 'Move']]
                 .drop_duplicates()
                 .reset_index(drop=True)
             )
             fig = go.Figure()
-            # Untuk setiap Row_Bay hitung pembagi
+
+            # Proses setiap Row_Bay
             for rb, group in unique_rows.groupby('Row_Bay'):
-                entries = group.to_dict('records')
-                n = len(entries)
-                if n == 0:
-                    continue
-                h = 1.0 / n
-                used = set()
-                for rec in entries:
-                    carrier = rec['Carrier Out']
-                    move = rec['Move']
-                    # pilih warna & opacity
-                    if move == 'Import':
-                        color = yellow
-                        opacity = 1.0
-                        showleg = False
-                    else:
-                        is_sel = carrier in selected
-                        color = carrier_color_map.get(carrier, gray) if is_sel else gray
-                        opacity = 1.0 if is_sel else 0.3
-                        showleg = (carrier not in used)
-                        used.add(carrier)
+                # Export/tranship carriers
+                exp_c = group[group['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
+                has_imp = any(group['Move'] == 'Import')
+                segments = len(exp_c) + (1 if has_imp else 0)
+                h = 1.0 / segments if segments > 0 else 0
+                # Masukkan import sebagai satu segment
+                if has_imp:
                     fig.add_trace(go.Bar(
-                        x=[rb],
-                        y=[h],
-                        name=carrier,
-                        marker_color=color,
-                        opacity=opacity,
+                        x=[rb], y=[h], name='Import',
+                        marker_color=yellow, opacity=1.0,
+                        showlegend=False
+                    ))
+                # Masukkan export/tranship carriers
+                used = set()
+                for carrier in exp_c:
+                    is_sel = carrier in selected
+                    color = carrier_color_map.get(carrier, gray) if is_sel else gray
+                    opacity = 1.0 if is_sel else 0.3
+                    showleg = carrier not in used
+                    used.add(carrier)
+                    fig.add_trace(go.Bar(
+                        x=[rb], y=[h], name=carrier,
+                        marker_color=color, opacity=opacity,
                         showlegend=showleg
                     ))
+
             # Atur layout
             fig.update_layout(
                 barmode='stack',
