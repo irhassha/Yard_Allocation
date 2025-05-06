@@ -69,6 +69,25 @@ else:
         default=export_trans_carriers
     )
 
+# —————— Tampilkan Legend Global di atas ——————
+# Buat figure kosong hanya untuk legend
+legend_fig = go.Figure()
+for carrier in export_trans_carriers:
+    color = carrier_color_map.get(carrier, gray)
+    legend_fig.add_trace(go.Bar(
+        x=[None], y=[None], name=carrier,
+        marker_color=color,
+        showlegend=True
+    ))
+legend_fig.update_layout(
+    template='plotly_dark',
+    legend_title='Carrier Out',
+    showlegend=True,
+    height=80,
+    margin=dict(t=10, b=10, l=10, r=10)
+)
+st.plotly_chart(legend_fig, use_container_width=True)
+
 # —————— Layout 3 kolom per prefix Area ——————
 cols = st.columns(3)
 prefixes = ['C', 'B', 'A']
@@ -79,41 +98,32 @@ for col, prefix in zip(cols, prefixes):
             if not area.startswith(prefix):
                 continue
             df_area = df[(df['Area'] == area) & (df['Move'].isin(selected_moves))]
-            # Unique entries per Row_Bay + Carrier Out + Move
             unique_rows = df_area[['Row_Bay', 'Carrier Out', 'Move']].drop_duplicates()
             fig = go.Figure()
             used = set()
-            # Row_Bay descending order
             row_bays = sorted(unique_rows['Row_Bay'].unique(), reverse=True)
             for rb in row_bays:
                 subset = unique_rows[unique_rows['Row_Bay'] == rb]
-                # Check import
                 has_imp = 'Import' in selected_moves and 'Import' in subset['Move'].values
-                # Export & Tranship carriers
                 carriers = subset[subset['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
-                # Determine segment count
-                segments = len(carriers) + (1 if has_imp else 0)
                 # Uniform height
                 h = 1
-                # Import segment
                 if has_imp:
                     fig.add_trace(go.Bar(
                         x=[rb], y=[h], name='Import',
-                        marker_color=yellow, opacity=1.0, showlegend=False
+                        marker_color=yellow, opacity=1.0,
+                        showlegend=False
                     ))
-                # Export/tranship segments
                 for carrier in carriers:
                     is_sel = carrier in selected
                     color = carrier_color_map.get(carrier, gray) if is_sel else gray
                     opacity = 1.0 if is_sel else 0.3
-                    showleg = carrier not in used
-                    if showleg:
-                        used.add(carrier)
+                    # legend hanya global, disable per-area
                     fig.add_trace(go.Bar(
                         x=[rb], y=[h], name=carrier,
-                        marker_color=color, opacity=opacity, showlegend=showleg
+                        marker_color=color, opacity=opacity,
+                        showlegend=False
                     ))
-            # Layout
             fig.update_layout(
                 barmode='stack',
                 template='plotly_dark',
@@ -122,8 +132,7 @@ for col, prefix in zip(cols, prefixes):
                     categoryorder='array', categoryarray=row_bays
                 ),
                 yaxis=dict(title='', showgrid=False, showticklabels=False),
-                legend_title='Carrier Out',
-                margin=dict(t=10, b=10, l=10, r=10), height=260
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=260
             )
-                                                # Tampilkan chart tanpa annotation tambahan
             st.plotly_chart(fig, use_container_width=True)
