@@ -7,26 +7,27 @@ st.set_page_config(layout="wide", page_title="Carrier Out per Area")
 
 # —————— Upload Excel Data ——————
 st.sidebar.markdown("## Upload Data Excel")
-uploaded_file = st.sidebar.file_uploader("Pilih file .xlsx atau .xls", type=["xlsx", "xls"])
-
+uploaded_file = st.sidebar.file_uploader(
+    "Pilih file .xlsx atau .xls", type=["xlsx", "xls"]
+)
 if not uploaded_file:
     st.sidebar.warning("Silakan upload file Excel terlebih dahulu.")
     st.stop()
 
-# Baca data
+# —————— Baca data ——————
 try:
     df = pd.read_excel(uploaded_file)
 except Exception as e:
     st.sidebar.error(f"Gagal membaca file: {e}")
     st.stop()
 
-# Cek kolom minimum
+# —————— Validasi kolom ——————
 required_cols = {'Area', 'Carrier Out', 'Row_Bay', 'Move'}
 if not required_cols.issubset(df.columns):
-    st.error(f"File harus mengandung kolom: {required_cols}")
+    st.error(f"File harus memiliki kolom: {required_cols}")
     st.stop()
 
-# Filter hanya Area A01-A08, B01-B08, C01-C08
+# —————— Filter Area A01-A08, B01-B08, C01-C08 ——————
 def in_range(area):
     if isinstance(area, str) and len(area) == 3:
         prefix, num = area[0], area[1:]
@@ -34,8 +35,6 @@ def in_range(area):
     return False
 
 df = df[df['Area'].apply(in_range)]
-
-# Jika tidak ada data setelah filter
 if df.empty:
     st.warning("Tidak ada data untuk Area A01-A08, B01-B08, atau C01-C08 setelah filter.")
     st.stop()
@@ -45,72 +44,75 @@ all_carriers = df['Carrier Out'].unique().tolist()
 palette = list(mcolors.TABLEAU_COLORS.values())
 carrier_color_map = {c: palette[i % len(palette)] for i, c in enumerate(all_carriers)}
 gray = '#555555'
-yellow = '#FFFF99'  # untuk Import
+yellow = '#FFFF99'  # Warna untuk Import
 
-# Tentukan carriers hanya untuk Export dan Transhipment
+# —————— Pilih carrier (Export & Transhipment) ——————
 valid_moves = ['Export', 'Transhipment']
-export_trans_carriers = df[df['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
-
-# —————— Sidebar: pilih carrier highlight ——————
+export_trans_carriers = sorted(df[df['Move'].isin(valid_moves)]['Carrier Out'].unique())
 st.sidebar.markdown("## Highlight Carrier Out")
 selected = st.sidebar.multiselect(
     "Pilih carrier (Export & Transhipment saja):",
-    options=sorted(export_trans_carriers),
-    default=sorted(export_trans_carriers)
+    options=export_trans_carriers,
+    default=export_trans_carriers
 )
 
-# —————— Layout 3 kolom per prefix Area ——————
-colC, colB, colA = st.columns(3)
-groups = {'C': colC, 'B': colB, 'A': colA}
+# —————— Siapkan layout 3 kolom berdasarkan prefix Area ——————
+cols = st.columns(3)
+prefixes = ['C', 'B', 'A']  # urutan kolom
 
-for prefix, col in groups.items():
+for col, prefix in zip(cols, prefixes):
     with col:
-        st.markdown(f"**AREA {prefix}**", unsafe_allow_html=True)
+        st.markdown(f"**AREA {prefix}**")
         areas = sorted(df['Area'].unique())
         for area in areas:
             if not area.startswith(prefix):
                 continue
+            # Data unik per Row_Bay, Carrier Out, Move
             df_area = df[df['Area'] == area]
-            # group by Row_Bay, Carrier Out, Move
-            grp = df_area.groupby(['Row_Bay','Carrier Out','Move']).size().reset_index(name='count')
-
+            unique_rows = (
+                df_area[['Row_Bay','Carrier Out','Move']]
+                .drop_duplicates()
+                .reset_index(drop=True)
+            )
             fig = go.Figure()
-            seen_legend = set()
-            for _, r in grp.iterrows():
-                rb, carrier, move, cnt = r['Row_Bay'], r['Carrier Out'], r['Move'], r['count']
-                if cnt <= 0:
+            # Untuk setiap Row_Bay hitung pembagi
+            for rb, group in unique_rows.groupby('Row_Bay'):
+                entries = group.to_dict('records')
+                n = len(entries)
+                if n == 0:
                     continue
-                # tentukan warna dan opacity
-                if move == 'Import':
-                    color = yellow
-                    opacity = 1.0
-                    showleg = False
-                else:
-                    # warnai hanya jika carrier di-export/tranship pilihan
-                    is_sel = carrier in selected
-                    color = carrier_color_map.get(carrier, gray) if is_sel else gray
-                    opacity = 1.0 if is_sel else 0.3
-                    showleg = (carrier not in seen_legend)
-                    if showleg:
-                        seen_legend.add(carrier)
-                fig.add_trace(go.Bar(
-                    x=[rb],
-                    y=[cnt],
-                    name=carrier,
-                    marker_color=color,
-                    opacity=opacity,
-                    showlegend=showleg
-                ))
-
+                h = 1.0 / n
+                used = set()
+                for rec in entries:
+                    carrier = rec['Carrier Out']
+                    move = rec['Move']
+                    # pilih warna & opacity
+                    if move == 'Import':
+                        color = yellow
+                        opacity = 1.0
+                        showleg = False
+                    else:
+                        is_sel = carrier in selected
+                        color = carrier_color_map.get(carrier, gray) if is_sel else gray
+                        opacity = 1.0 if is_sel else 0.3
+                        showleg = (carrier not in used)
+                        used.add(carrier)
+                    fig.add_trace(go.Bar(
+                        x=[rb],
+                        y=[h],
+                        name=carrier,
+                        marker_color=color,
+                        opacity=opacity,
+                        showlegend=showleg
+                    ))
+            # Atur layout
             fig.update_layout(
                 barmode='stack',
                 template='plotly_dark',
                 xaxis=dict(title='', showgrid=False),
-                yaxis=dict(title='', showgrid=True, showticklabels=False),
+                yaxis=dict(title='', showgrid=False, showticklabels=False),
                 legend_title='Carrier Out',
                 margin=dict(t=10, b=10, l=10, r=10),
-                height=250
+                height=260
             )
-
-            # tampilkan chart
             st.plotly_chart(fig, use_container_width=True)
