@@ -71,51 +71,44 @@ prefixes = ['C', 'B', 'A']
 for col, prefix in zip(cols, prefixes):
     with col:
         st.markdown(f"**AREA {prefix}**")
-        for area in sorted(df['Area'].unique()):
+        # Iterate area descending (A08..A01, etc)
+        for area in sorted(df['Area'].unique(), reverse=True):
             if not area.startswith(prefix):
                 continue
             df_area = df[df['Area'] == area]
-            # Ambil unique per Row_Bay, Carrier Out, Move
+            # Ambil unique entries untuk Export & Transhipment saja
             unique_rows = (
-                df_area[['Row_Bay', 'Carrier Out', 'Move']]
+                df_area[df_area['Move'].isin(valid_moves)][['Row_Bay','Carrier Out']]
                 .drop_duplicates()
                 .reset_index(drop=True)
             )
             fig = go.Figure()
-
-            # Proses setiap Row_Bay
-            for rb, group in unique_rows.groupby('Row_Bay'):
-                # cek presence export/trans and import
-                exp_c = group[group['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
-                has_imp = any(group['Move'] == 'Import')
-                # Uniform bar height untuk semua segmen
-                uniform_height = 1
-                # Import one segment full height
-                if has_imp:
-                    fig.add_trace(go.Bar(
-                        x=[rb], y=[uniform_height], name='Import',
-                        marker_color=yellow, opacity=1.0,
-                        showlegend=False
-                    ))
-                # Export/tranship carriers, satu segmen per carrier full height
-                used = set()
-                for carrier in exp_c:
+            used = set()
+            # Urutkan Row_Bay descending
+            row_bays = sorted(unique_rows['Row_Bay'].unique(), reverse=True)
+            for rb in row_bays:
+                carriers = unique_rows[unique_rows['Row_Bay'] == rb]['Carrier Out'].unique().tolist()
+                for carrier in carriers:
                     is_sel = carrier in selected
                     color = carrier_color_map.get(carrier, gray) if is_sel else gray
                     opacity = 1.0 if is_sel else 0.3
                     showleg = carrier not in used
-                    used.add(carrier)
+                    if showleg:
+                        used.add(carrier)
                     fig.add_trace(go.Bar(
-                        x=[rb], y=[uniform_height], name=carrier,
+                        x=[rb], y=[1], name=carrier,
                         marker_color=color, opacity=opacity,
                         showlegend=showleg
                     ))
-
-            # Atur layout
             fig.update_layout(
-                barmode='stack',  # tetap stack, tapi semua segmen tinggi sama
+                barmode='stack',
                 template='plotly_dark',
-                xaxis=dict(title='', showgrid=False),
+                xaxis=dict(
+                    title='',
+                    showgrid=False,
+                    categoryorder='array',
+                    categoryarray=row_bays
+                ),
                 yaxis=dict(title='', showgrid=False, showticklabels=False),
                 legend_title='Carrier Out',
                 margin=dict(t=10, b=10, l=10, r=10),
