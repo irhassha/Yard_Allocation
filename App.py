@@ -1,88 +1,60 @@
 import streamlit as st
+import plotly.graph_objects as go
 import pandas as pd
-from io import BytesIO
+import matplotlib.colors as mcolors
 
-# Function to process and prepare the template
-def process_data(data):
-    areas = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08']
-    row_bays = [f"A01-{str(i).zfill(2)}" for i in range(1, 9)]
+# Data (you can replace this with your actual data source)
+data = {
+    'Area': ['A01'] * 20,
+    'Move': ['Export'] * 20,
+    'Carrier Out': ['ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 
+                    'MERAN', 'MERAN', 'MERAN', 'MERAN', 'MERAN', 
+                    'MERAN', 'MERAN', 'MERAN', 'JOSEP', 'JOSEP',
+                    'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL'],
+    'Row_Bay': ['A01-03', 'A01-03', 'A01-03', 'A01-03', 'A01-03', 
+                'A01-03', 'A01-03', 'A01-03', 'A01-03', 'A01-03', 
+                'A01-03', 'A01-03', 'A01-03', 'A01-07', 'A01-07', 
+                'A01-07', 'A01-07', 'A01-07', 'A01-07', 'A01-07']
+}
 
-    final_template_unique = pd.DataFrame(columns=row_bays, index=areas)
+# Convert data to DataFrame
+df = pd.DataFrame(data)
 
-    # Fill in the final template by iterating over the data
-    for area in areas:
-        for row in row_bays:
-            # Extract all unique Carrier Out values for this Area and Row_Bay
-            carrier_out_values = data[(data["Area"] == area) & (data["Row_Bay"] == row)]["Carrier Out"].unique()
-            if len(carrier_out_values) > 0:
-                final_template_unique.loc[area, row] = ', '.join(carrier_out_values)
-            else:
-                final_template_unique.loc[area, row] = ""
+# Group by Row_Bay and Carrier Out and count occurrences
+df_grouped = df.groupby(['Row_Bay', 'Carrier Out']).size().unstack(fill_value=0)
 
-    return final_template_unique
+# Define colors for each unique Carrier Out
+unique_carriers = df['Carrier Out'].unique()
+colors = list(mcolors.TABLEAU_COLORS.values())
 
-# Main function to render the app
-def main():
-    st.title("Carrier Out Data Visualization")
+# Create a mapping of Carrier Out to colors
+carrier_color_map = {carrier: colors[i % len(colors)] for i, carrier in enumerate(unique_carriers)}
 
-    # Upload the file
-    uploaded_file = st.file_uploader("Upload an Excel file", type=["xlsx", "xls"])
+# Create the stacked bar chart with Plotly
+fig = go.Figure()
 
-    if uploaded_file is not None:
-        # Read the uploaded Excel file
-        data = pd.read_excel(uploaded_file, sheet_name='Unit List - All')
+# Add bars for each Carrier Out
+for carrier in df_grouped.columns:
+    fig.add_trace(go.Bar(
+        x=df_grouped.index,
+        y=df_grouped[carrier],
+        name=carrier,
+        marker_color=carrier_color_map[carrier],
+        hoverinfo='x+y+name',  # Show name, x, and y values on hover
+        opacity=0.7  # Set initial opacity for unselected categories
+    ))
 
-        # Process the data to generate the final table
-        final_template = process_data(data)
+# Update layout to remove grid lines and set axis labels
+fig.update_layout(
+    title='Stacked Visualization of Carrier Out in Each Row_Bay',
+    xaxis_title='Row_Bay',
+    yaxis_title='Count of Carrier Out',
+    barmode='stack',
+    xaxis=dict(tickmode='array', tickvals=df_grouped.index),
+    showlegend=True,
+    legend_title='Carrier Out',
+    template='plotly_white'
+)
 
-        # Display the final template as a table
-        st.write("Here is the table with unique Carrier Out values for each Row/Bay:")
-        st.dataframe(final_template)
-
-if __name__ == "__main__":
-    main()
-import streamlit as st
-import pandas as pd
-
-# Function to load data from an Excel file
-@st.cache
-def load_data():
-    file_path = 'UnitListAll.xlsx'  # Ganti dengan path file kamu
-    data = pd.read_excel(file_path, sheet_name='Unit List - All')
-    return data
-
-# Function to process and prepare the template
-def process_data(data):
-    areas = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08']
-    row_bays = [f"A01-{str(i).zfill(2)}" for i in range(1, 9)]
-
-    final_template_unique = pd.DataFrame(columns=row_bays, index=areas)
-
-    # Fill in the final template by iterating over the data
-    for area in areas:
-        for row in row_bays:
-            # Extract all unique Carrier Out values for this Area and Row_Bay
-            carrier_out_values = data[(data["Area"] == area) & (data["Row_Bay"] == row)]["Carrier Out"].unique()
-            if len(carrier_out_values) > 0:
-                final_template_unique.loc[area, row] = ', '.join(carrier_out_values)
-            else:
-                final_template_unique.loc[area, row] = ""
-
-    return final_template_unique
-
-# Main function to render the app
-def main():
-    st.title("Carrier Out Data Visualization")
-
-    # Load the data
-    data = load_data()
-
-    # Process the data to generate the final table
-    final_template = process_data(data)
-
-    # Display the final template as a table
-    st.write("Here is the table with unique Carrier Out values for each Row/Bay:")
-    st.dataframe(final_template)
-
-if __name__ == "__main__":
-    main()
+# Display the figure using Streamlit
+st.plotly_chart(fig)
