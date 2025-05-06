@@ -125,13 +125,13 @@ for col, prefix in zip(cols, prefixes):
                 legend_title='Carrier Out',
                 margin=dict(t=10, b=10, l=10, r=10), height=260
             )
-                        # Tambahkan keterangan Area di bawah legend
+                                    # Tambahkan keterangan Area di bawah legend
             fig.add_annotation(
-                text=area,
+                text=f"<b>{area}</b>",
                 xref='paper', yref='paper',
-                x=1.02, y=0.15,
+                x=1.02, y=0.05,
                 showarrow=False,
-                font=dict(size=14, color='lightgray'),
+                font=dict(size=18, color='lightgray'),
                 align='center'
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True)(fig, use_container_width=True)
