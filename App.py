@@ -78,19 +78,19 @@ for col, prefix in zip(cols, prefixes):
 
             # Proses setiap Row_Bay
             for rb, group in unique_rows.groupby('Row_Bay'):
-                # Export/tranship carriers
+                # cek presence export/trans and import
                 exp_c = group[group['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
                 has_imp = any(group['Move'] == 'Import')
-                segments = len(exp_c) + (1 if has_imp else 0)
-                h = 1.0 / segments if segments > 0 else 0
-                # Masukkan import sebagai satu segment
+                # Uniform bar height untuk semua segmen
+                uniform_height = 1
+                # Import one segment full height
                 if has_imp:
                     fig.add_trace(go.Bar(
-                        x=[rb], y=[h], name='Import',
+                        x=[rb], y=[uniform_height], name='Import',
                         marker_color=yellow, opacity=1.0,
                         showlegend=False
                     ))
-                # Masukkan export/tranship carriers
+                # Export/tranship carriers, satu segmen per carrier full height
                 used = set()
                 for carrier in exp_c:
                     is_sel = carrier in selected
@@ -99,14 +99,14 @@ for col, prefix in zip(cols, prefixes):
                     showleg = carrier not in used
                     used.add(carrier)
                     fig.add_trace(go.Bar(
-                        x=[rb], y=[h], name=carrier,
+                        x=[rb], y=[uniform_height], name=carrier,
                         marker_color=color, opacity=opacity,
                         showlegend=showleg
                     ))
 
             # Atur layout
             fig.update_layout(
-                barmode='stack',
+                barmode='stack',  # tetap stack, tapi semua segmen tinggi sama
                 template='plotly_dark',
                 xaxis=dict(title='', showgrid=False),
                 yaxis=dict(title='', showgrid=False, showticklabels=False),
