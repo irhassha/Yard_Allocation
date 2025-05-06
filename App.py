@@ -5,41 +5,48 @@ import matplotlib.colors as mcolors
 
 st.set_page_config(layout="wide", page_title="Carrier Out per Area")
 
-# —————— Data ——————
+# —————— Data contoh baru ——————
 data = {
-    'Area': ['A01'] * 10 + ['B01'] * 10,
-    'Move': ['Export'] * 20,
+    'Area': [
+        'A01','A01','A01','A01',
+        'A02','A02','A02',
+        'B01','B01','B01','B01','B01',
+        'B02','B02','B02'
+    ],
+    'Move': ['Export'] * 15,
     'Carrier Out': [
-        'ORNEL','ORNEL','ORNEL','ORNEL','ORNEL',
-        'MERAN','MERAN','MERAN','MERAN','MERAN',
-        'MERAN','MERAN','MERAN','JOSEP','JOSEP',
-        'ORNEL','ORNEL','ORNEL','ORNEL','ORNEL'
+        'ORNEL','MERAN','JOSEP','ORNEL',
+        'ORNEL','ORNEL','MERAN',
+        'MERAN','SIDEC','JOSEP','MERAN','SIDEC',
+        'MERAN','JOSEP','JOSEP'
     ],
     'Row_Bay': [
-        'A01-03','A01-03','A01-03','A01-07','A01-07',
-        'A01-03','A01-03','A01-07','A01-07','A01-03',
-        'B01-03','B01-03','B01-03','B01-03','B01-07',
-        'B01-07','B01-03','B01-07','B01-03','B01-07'
+        'A01-03','A01-03','A01-03','A01-07',
+        'A02-03','A02-07','A02-07',
+        'B01-03','B01-03','B01-03','B01-07','B01-07',
+        'B02-03','B02-03','B02-07'
     ]
 }
+
+# —————— Load DataFrame ——————
 df = pd.DataFrame(data)
 
-# —————— Warna ——————
+# —————— Setup warna ——————
 unique_carriers = df['Carrier Out'].unique().tolist()
 palette = list(mcolors.TABLEAU_COLORS.values())
 carrier_color_map = {c: palette[i % len(palette)] for i, c in enumerate(unique_carriers)}
 gray = '#555555'
 
-# —————— Sidebar untuk highlight ——————
+# —————— Sidebar highlight ——————
 st.sidebar.markdown("### Highlight Carrier Out")
 selected = st.sidebar.multiselect(
-    "Pilih carrier",
+    "Pilih carrier:",
     options=unique_carriers,
     default=unique_carriers
 )
 
 # —————— Plot per Area ——————
-for area in df['Area'].unique():
+for area in sorted(df['Area'].unique()):
     df_area = df[df['Area'] == area]
     df_grp = df_area.groupby(['Row_Bay','Carrier Out']).size().unstack(fill_value=0)
 
@@ -64,9 +71,8 @@ for area in df['Area'].unique():
         height=350
     )
 
-    # Annotation area code kecil di pojok kanan bawah
     fig.add_annotation(
-        text=f"{area}",
+        text=area,
         xref='paper', yref='paper',
         x=0.98, y=0.02,
         showarrow=False,
