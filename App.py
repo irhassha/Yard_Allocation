@@ -41,18 +41,22 @@ if df.empty:
     st.stop()
 
 # —————— Setup warna ——————
-unique_carriers = df['Carrier Out'].unique().tolist()
+all_carriers = df['Carrier Out'].unique().tolist()
 palette = list(mcolors.TABLEAU_COLORS.values())
-carrier_color_map = {c: palette[i % len(palette)] for i, c in enumerate(unique_carriers)}
+carrier_color_map = {c: palette[i % len(palette)] for i, c in enumerate(all_carriers)}
 gray = '#555555'
 yellow = '#FFFF99'  # untuk Import
+
+# Tentukan carriers hanya untuk Export dan Transhipment
+valid_moves = ['Export', 'Transhipment']
+export_trans_carriers = df[df['Move'].isin(valid_moves)]['Carrier Out'].unique().tolist()
 
 # —————— Sidebar: pilih carrier highlight ——————
 st.sidebar.markdown("## Highlight Carrier Out")
 selected = st.sidebar.multiselect(
-    "Pilih carrier:",
-    options=unique_carriers,
-    default=unique_carriers
+    "Pilih carrier (Export & Transhipment saja):",
+    options=sorted(export_trans_carriers),
+    default=sorted(export_trans_carriers)
 )
 
 # —————— Layout 3 kolom per prefix Area ——————
@@ -82,8 +86,10 @@ for prefix, col in groups.items():
                     opacity = 1.0
                     showleg = False
                 else:
-                    color = carrier_color_map.get(carrier, gray) if carrier in selected else gray
-                    opacity = 1.0 if carrier in selected else 0.3
+                    # warnai hanya jika carrier di-export/tranship pilihan
+                    is_sel = carrier in selected
+                    color = carrier_color_map.get(carrier, gray) if is_sel else gray
+                    opacity = 1.0 if is_sel else 0.3
                     showleg = (carrier not in seen_legend)
                     if showleg:
                         seen_legend.add(carrier)
