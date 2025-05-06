@@ -83,8 +83,16 @@ legend_fig.update_layout(
     template='plotly_dark',
     legend_title='Carrier Out',
     showlegend=True,
+    legend=dict(
+        orientation='h',
+        yanchor='bottom',
+        y=1.02,
+        xanchor='center',
+        x=0.5
+    ),
     height=80,
     margin=dict(t=10, b=10, l=10, r=10)
+)
 )
 st.plotly_chart(legend_fig, use_container_width=True)
 
