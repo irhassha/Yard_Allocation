@@ -41,7 +41,8 @@ for carrier in df_grouped.columns:
         name=carrier,
         marker_color=carrier_color_map[carrier],
         hoverinfo='x+y+name',  # Show name, x, and y values on hover
-        opacity=0.7  # Set initial opacity for unselected categories
+        opacity=0.7,  # Set initial opacity for unselected categories
+        visible='legendonly',  # Make bars invisible initially when unchecked
     ))
 
 # Update layout to remove grid lines and set axis labels
