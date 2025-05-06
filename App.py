@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import matplotlib.colors as mcolors
 
-# Data (you can replace this with your actual data source)
+# Sample data (you can replace this with your actual data)
 data = {
     'Area': ['A01'] * 20,
     'Move': ['Export'] * 20,
@@ -30,9 +30,6 @@ colors = list(mcolors.TABLEAU_COLORS.values())
 # Create a mapping of Carrier Out to colors
 carrier_color_map = {carrier: colors[i % len(colors)] for i, carrier in enumerate(unique_carriers)}
 
-# Neutral gray color
-gray_color = '#d3d3d3'
-
 # Create the stacked bar chart with Plotly
 fig = go.Figure()
 
@@ -42,9 +39,9 @@ for carrier in df_grouped.columns:
         x=df_grouped.index,
         y=df_grouped[carrier],
         name=carrier,
-        marker_color=carrier_color_map[carrier] if carrier in st.session_state.get('selected_carriers', []) else gray_color,
+        marker_color=carrier_color_map[carrier],  # Original color for each carrier
         hoverinfo='x+y+name',  # Show name, x, and y values on hover
-        opacity=1 if carrier in st.session_state.get('selected_carriers', []) else 0.3,  # Reduce opacity for unselected
+        opacity=0.3,  # Start with lower opacity for unselected carriers
     ))
 
 # Update layout to remove grid lines and set axis labels
@@ -60,8 +57,15 @@ fig.update_layout(
 )
 
 # Handle legend selection/deselection to highlight carriers
-if 'selected_carriers' not in st.session_state:
-    st.session_state.selected_carriers = unique_carriers.tolist()  # Select all by default
+# Create a custom logic to highlight only the selected carriers
+selected_carriers = st.multiselect('Select Carrier Out', unique_carriers.tolist(), default=unique_carriers.tolist())
+
+# Loop over the bars and adjust opacity and color
+for trace in fig.data:
+    if trace.name not in selected_carriers:
+        trace.update(marker_color='gray', opacity=0.2)  # Unselected carriers turn gray and reduce opacity
+    else:
+        trace.update(marker_color=carrier_color_map[trace.name], opacity=1)  # Highlight selected carriers
 
 # Display the figure using Streamlit
 st.plotly_chart(fig)
