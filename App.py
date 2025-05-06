@@ -70,6 +70,14 @@ else:
     )
 
 # —————— Tampilkan Legend Global di atas ——————
+# Fitur Select All / Unselect All untuk Carrier Out di legend
+st.markdown("## Carrier Out Legend")
+leg_col1, leg_col2 = st.columns(2)
+if leg_col1.button("Select All Carriers"):
+    selected = export_trans_carriers.copy()
+elif leg_col2.button("Clear All Carriers"):
+    selected = []
+
 # Buat figure kosong hanya untuk legend
 legend_fig = go.Figure()
 for carrier in export_trans_carriers:
