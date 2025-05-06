@@ -5,28 +5,32 @@ import matplotlib.colors as mcolors
 
 st.set_page_config(layout="wide", page_title="Carrier Out per Area")
 
-# —————— Data contoh baru ——————
+# —————— Data contoh dengan Area C ——————
 data = {
     'Area': [
         'A01','A01','A01','A01',
         'A02','A02','A02',
         'B01','B01','B01','B01','B01',
-        'B02','B02','B02'
+        'B02','B02','B02',
+        'C01','C01','C02','C02','C02'
     ],
-    'Move': ['Export'] * 15,
+    'Move': ['Export'] * 20,
     'Carrier Out': [
-        'ORNEL','MERAN','JOSEP','ORNEL',
-        'ORNEL','ORNEL','MERAN',
-        'MERAN','SIDEC','JOSEP','MERAN','SIDEC',
-        'MERAN','JOSEP','JOSEP'
+        'ORNEL','MERAN','JOSEP','ORNEL',      # A01
+        'ORNEL','ORNEL','MERAN',             # A02
+        'MERAN','SIDEC','JOSEP','MERAN','SIDEC', # B01
+        'MERAN','JOSEP','JOSEP',             # B02
+        'ORNEL','MERAN','JOSEP','ORNEL','MERAN'  # C01 & C02
     ],
     'Row_Bay': [
-        'A01-03','A01-03','A01-03','A01-07',
-        'A02-03','A02-07','A02-07',
-        'B01-03','B01-03','B01-03','B01-07','B01-07',
-        'B02-03','B02-03','B02-07'
+        'A01-03','A01-03','A01-03','A01-07', # A01
+        'A02-03','A02-07','A02-07',          # A02
+        'B01-03','B01-03','B01-03','B01-07','B01-07', # B01
+        'B02-03','B02-03','B02-07',          # B02
+        'C01-03','C01-07','C02-03','C02-03','C02-07'  # C
     ]
 }
+
 df = pd.DataFrame(data)
 
 # —————— Setup warna ——————
@@ -43,23 +47,22 @@ selected = st.sidebar.multiselect(
     default=unique_carriers
 )
 
-# —————— Layout 2 kolom berdasarkan prefix Area ——————
-colB, colA = st.columns(2)
+# —————— Layout 3 kolom berdasarkan prefix Area ——————
+colC, colB, colA = st.columns(3)
+groups = {'C': colC, 'B': colB, 'A': colA}
 
-groups = {'B': colB, 'A': colA}
 for prefix, col in groups.items():
     with col:
-        # Judul kolom AREA B / AREA A
+        # Header per kelompok Area
         st.markdown(f"**AREA {prefix}**", unsafe_allow_html=True)
 
-        # Loop setiap kode Area yang diawali prefix
+        # Loop tiap kode Area sesuai prefix
         for area in sorted(df['Area'].unique()):
             if not area.startswith(prefix):
                 continue
             df_area = df[df['Area'] == area]
             df_grp = df_area.groupby(['Row_Bay', 'Carrier Out']).size().unstack(fill_value=0)
 
-            # Buat figure per Area
             fig = go.Figure()
             for carrier in df_grp.columns:
                 is_sel = carrier in selected
@@ -81,5 +84,4 @@ for prefix, col in groups.items():
                 height=250
             )
 
-            # Tampilkan kode Area di bawah grafik (dialig nanti optional)
             st.plotly_chart(fig, use_container_width=True)
