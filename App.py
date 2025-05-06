@@ -38,40 +38,40 @@ selected = st.sidebar.multiselect(
     default=unique_carriers
 )
 
-# —————— Loop per Area ——————
+# —————— Plot per Area ——————
 for area in df['Area'].unique():
-    df_a = df[df['Area'] == area]
-    df_grp = df_a.groupby(['Row_Bay','Carrier Out']).size().unstack(fill_value=0)
-    
+    df_area = df[df['Area'] == area]
+    df_grp = df_area.groupby(['Row_Bay','Carrier Out']).size().unstack(fill_value=0)
+
     fig = go.Figure()
     for carrier in df_grp.columns:
-        sel = carrier in selected
+        is_sel = carrier in selected
         fig.add_trace(go.Bar(
             x=df_grp.index,
             y=df_grp[carrier],
             name=carrier,
-            marker_color=carrier_color_map[carrier] if sel else gray,
-            opacity=1.0 if sel else 0.3
+            marker_color=carrier_color_map[carrier] if is_sel else gray,
+            opacity=1.0 if is_sel else 0.3
         ))
-    
+
     fig.update_layout(
         barmode='stack',
         template='plotly_dark',
         xaxis=dict(title='', showgrid=False),
-        yaxis=dict(title='', showgrid=False),
+        yaxis=dict(title='', showgrid=True, showticklabels=False),
         legend_title='Carrier Out',
         margin=dict(t=20, b=20, l=20, r=20),
         height=350
     )
-    
+
+    # Annotation area code kecil di pojok kanan bawah
     fig.add_annotation(
-        text=f"Area {area}",
+        text=f"{area}",
         xref='paper', yref='paper',
         x=0.98, y=0.02,
         showarrow=False,
-        font=dict(size=12, color='lightgray'),
-        xanchor='right',
-        yanchor='bottom'
+        font=dict(size=14, color='lightgray'),
+        xanchor='right', yanchor='bottom'
     )
-    
+
     st.plotly_chart(fig, use_container_width=True)
