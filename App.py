@@ -3,25 +3,25 @@ import plotly.graph_objects as go
 import pandas as pd
 import matplotlib.colors as mcolors
 
-# Sample data (you can replace this with your actual data)
+# Data (update dengan data Anda)
 data = {
-    'Area': ['A01'] * 20,
+    'Area': ['A01'] * 10 + ['B01'] * 10,
     'Move': ['Export'] * 20,
     'Carrier Out': ['ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 
                     'MERAN', 'MERAN', 'MERAN', 'MERAN', 'MERAN', 
                     'MERAN', 'MERAN', 'MERAN', 'JOSEP', 'JOSEP',
                     'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL', 'ORNEL'],
-    'Row_Bay': ['A01-03', 'A01-03', 'A01-03', 'A01-03', 'A01-03', 
-                'A01-03', 'A01-03', 'A01-03', 'A01-03', 'A01-03', 
-                'A01-03', 'A01-03', 'A01-03', 'A01-07', 'A01-07', 
-                'A01-07', 'A01-07', 'A01-07', 'A01-07', 'A01-07']
+    'Row_Bay': ['A01-03', 'A01-03', 'A01-03', 'A01-03', 'A01-07', 
+                'A01-07', 'A01-03', 'A01-03', 'A01-07', 'A01-07',
+                'B01-03', 'B01-03', 'B01-03', 'B01-03', 'B01-07',
+                'B01-07', 'B01-03', 'B01-07', 'B01-03', 'B01-07']
 }
 
 # Convert data to DataFrame
 df = pd.DataFrame(data)
 
-# Group by Row_Bay and Carrier Out and count occurrences
-df_grouped = df.groupby(['Row_Bay', 'Carrier Out']).size().unstack(fill_value=0)
+# Group by Area, Row_Bay, and Carrier Out and count occurrences
+df_grouped = df.groupby(['Area', 'Row_Bay', 'Carrier Out']).size().unstack(fill_value=0)
 
 # Define colors for each unique Carrier Out
 unique_carriers = df['Carrier Out'].unique()
@@ -33,16 +33,20 @@ carrier_color_map = {carrier: colors[i % len(colors)] for i, carrier in enumerat
 # Create the stacked bar chart with Plotly
 fig = go.Figure()
 
-# Add bars for each Carrier Out
-for carrier in df_grouped.columns:
-    fig.add_trace(go.Bar(
-        x=df_grouped.index,
-        y=df_grouped[carrier],
-        name=carrier,
-        marker_color=carrier_color_map[carrier],  # Original color for each carrier
-        hoverinfo='x+y+name',  # Show name, x, and y values on hover
-        opacity=0.3,  # Start with lower opacity for unselected carriers
-    ))
+# Loop through each Area and create separate bar charts
+for area in df_grouped.index.get_level_values('Area').unique():
+    df_area = df_grouped.loc[area]
+    
+    # Add bars for each Carrier Out in that area
+    for carrier in df_area.columns:
+        fig.add_trace(go.Bar(
+            x=df_area.index,
+            y=df_area[carrier],
+            name=f'{area} - {carrier}',
+            marker_color=carrier_color_map[carrier],  # Original color for each carrier
+            hoverinfo='x+y+name',  # Show name, x, and y values on hover
+            opacity=0.7,  # Set opacity for all categories
+        ))
 
 # Update layout to remove grid lines and set axis labels
 fig.update_layout(
@@ -50,22 +54,12 @@ fig.update_layout(
     xaxis_title='Row_Bay',
     yaxis_title='Count of Carrier Out',
     barmode='stack',
-    xaxis=dict(tickmode='array', tickvals=df_grouped.index),
+    xaxis=dict(tickmode='array', tickvals=df_grouped.index.get_level_values('Row_Bay').unique()),
     showlegend=True,
     legend_title='Carrier Out',
-    template='plotly_white'
+    template='plotly_dark',  # Update template for dark theme like the example
+    height=700
 )
-
-# Handle legend selection/deselection to highlight carriers
-# Create a custom logic to highlight only the selected carriers
-selected_carriers = st.multiselect('Select Carrier Out', unique_carriers.tolist(), default=unique_carriers.tolist())
-
-# Loop over the bars and adjust opacity and color
-for trace in fig.data:
-    if trace.name not in selected_carriers:
-        trace.update(marker_color='gray', opacity=0.2)  # Unselected carriers turn gray and reduce opacity
-    else:
-        trace.update(marker_color=carrier_color_map[trace.name], opacity=1)  # Highlight selected carriers
 
 # Display the figure using Streamlit
 st.plotly_chart(fig)
