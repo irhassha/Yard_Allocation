@@ -51,11 +51,18 @@ yellow = '#FFFF99'  # Warna untuk Import
 valid_moves = ['Export', 'Transhipment']
 export_trans_carriers = sorted(df[df['Move'].isin(valid_moves)]['Carrier Out'].unique())
 st.sidebar.markdown("## Highlight Carrier Out")
-selected = st.sidebar.multiselect(
-    "Pilih carrier (Export & Transhipment saja):",
-    options=export_trans_carriers,
-    default=export_trans_carriers
-)
+# Tombol Select All / Clear All
+col_sa, col_ca = st.sidebar.columns(2)
+if col_sa.button("Select All"):
+    selected = export_trans_carriers.copy()
+elif col_ca.button("Clear All"):
+    selected = []
+else:
+    selected = st.sidebar.multiselect(
+        "Pilih carrier (Export & Transhipment saja):",
+        options=export_trans_carriers,
+        default=export_trans_carriers
+    )
 
 # —————— Layout 3 kolom per prefix Area ——————
 cols = st.columns(3)
