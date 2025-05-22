@@ -156,6 +156,7 @@ for _, row in edited.iterrows():
 
 # Buat DataFrame hasil
 df_plan = pd.DataFrame(df_plan_rows)
+df_plan = pd.DataFrame(df_plan_rows)
     multiplier = 6
     for _, row in edited.iterrows():
         area_text = row.get("Area", "")
