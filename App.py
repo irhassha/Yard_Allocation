@@ -107,33 +107,43 @@ with tab1:
 
 with tab2:
     st.header("Fitur Lain: Plan Capacity Calculator")
-    # Form input untuk perhitungan
-    areas_input = st.text_input("Area (pisahkan dengan koma, misal: A01,A02,A03)", "A01,A02,A03")
-    slot_input = st.text_input("Slot (format mulai-akhir, misal: 20-25)", "20-25")
-    height_input = st.number_input("Height", min_value=1, value=4)
-    actual_stack_input = st.number_input("Actual Stack", min_value=0, value=0)
+    # Editable table untuk input multiple rows
+    df_input = pd.DataFrame(
+        columns=["Area", "Slot", "Height", "Actual Stack"]
+    )
+    edited = st.experimental_data_editor(
+        df_input,
+        num_rows="dynamic",
+        use_container_width=True
+    )
 
-    # Hitung jumlah area
-    areas_list = [a.strip() for a in areas_input.split(",") if a.strip()]
-    num_areas = len(areas_list)
-    # Hitung jumlah slot dari rentang
-    try:
-        start_slot, end_slot = [int(x) for x in slot_input.split("-")]
-        num_slots = abs(end_slot - start_slot) + 1
-    except:
-        num_slots = 0
-    # Default multiplier
+    # Proses setiap baris input
+    rows = []
     multiplier = 6
-    # Total Plan Capacity
-    total_plan_capacity = num_areas * num_slots * height_input * multiplier
+    for _, row in edited.iterrows():
+        area_text = row.get("Area", "")
+        slot_text = row.get("Slot", "")
+        height = row.get("Height", 0) or 0
+        actual_stack = row.get("Actual Stack", 0) or 0
+        # hitung jumlah area
+        area_list = [a.strip() for a in area_text.split(',') if a.strip()]
+        num_areas = len(area_list)
+        # hitung jumlah slot
+        try:
+            start, end = [int(x) for x in slot_text.split('-')]
+            num_slots = abs(end - start) + 1
+        except:
+            num_slots = 0
+        # hitung total plan capacity
+        total_plan_capacity = num_areas * num_slots * height * multiplier
+        rows.append({
+            "Area": area_text,
+            "Slot": slot_text,
+            "Height": height,
+            "Total Plan Capacity": total_plan_capacity,
+            "Actual Stack": actual_stack
+        })
 
-    # Buat DataFrame untuk ditampilkan
-    df_plan = pd.DataFrame({
-        "Area": [",".join(areas_list)],
-        "Slot": [slot_input],
-        "Height": [height_input],
-        "Total Plan Capacity": [total_plan_capacity],
-        "Actual Stack": [actual_stack_input]
-    })
+    df_plan = pd.DataFrame(rows)
     st.subheader("Summary Plan Capacity")
-    st.dataframe(df_plan)
+    st.dataframe(df_plan, use_container_width=True)
