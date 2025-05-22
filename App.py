@@ -107,49 +107,49 @@ with tab1:
 
 with tab2:
     st.header("Fitur Lain: Plan Capacity Calculator")
-    # Tabel input dinamis
-    df_input = pd.DataFrame(columns=["Area", "Slot", "Height", "Actual Stack"])
+    # Editable table untuk input beberapa baris: Area, Slot, Height
+    df_input = pd.DataFrame(columns=["Area", "Slot", "Height"])
     edited = st.data_editor(
         df_input,
         num_rows="dynamic",
         use_container_width=True
     )
 
-    # Perhitungan Total Plan Capacity per baris
+    # Proses input untuk menghitung Actual Stack dan Total Plan Capacity
     multiplier = 6
-    df_plan_rows = []
+    plan_rows = []
     for _, row in edited.iterrows():
-        area_text = row.get("Area", "") or ""
-        slot_text = row.get("Slot", "") or ""
-        # Konversi Height
+        area_text = (row.get("Area") or "").strip()
+        slot_text = (row.get("Slot") or "").strip()
+        # Parsing Height
         try:
             height = int(float(row.get("Height", 0)))
         except:
             height = 0
-        # Konversi Actual Stack
-        try:
-            actual_stack = int(float(row.get("Actual Stack", 0)))
-        except:
-            actual_stack = 0
-        # List area
-        area_list = [a.strip() for a in area_text.split(",") if a.strip()]
+        # Hitung jumlah area
+        area_list = [a.strip() for a in area_text.split(',') if a.strip()]
         num_areas = len(area_list)
-        # Hitung slot
+        # Hitung slot range dan list row bays
         try:
             start_slot, end_slot = [int(x) for x in slot_text.split("-")]
             num_slots = abs(end_slot - start_slot) + 1
+            # Buat list Row_Bay sesuai format Area-num (dengan pad 2 digit)
+            row_bays = [f"{area_text}-{num:02d}" for num in range(start_slot, end_slot+1)]
         except:
             num_slots = 0
-        # Total plan capacity
+            row_bays = []
+        # Hitung Actual Stack berdasarkan file
+        actual_stack = df[(df['Area'] == area_text) & (df['Row_Bay'].isin(row_bays))].shape[0]
+        # Hitung Total Plan Capacity
         total_plan_capacity = num_areas * num_slots * height * multiplier
-        df_plan_rows.append({
+        plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
             "Height": height,
             "Total Plan Capacity": total_plan_capacity,
             "Actual Stack": actual_stack
         })
-    # Buat DataFrame dan tampilkan
-    df_plan = pd.DataFrame(df_plan_rows)
+    # DataFrame hasil dan tampilkan
+    df_plan = pd.DataFrame(plan_rows)
     st.subheader("Summary Plan Capacity")
     st.dataframe(df_plan, use_container_width=True)
