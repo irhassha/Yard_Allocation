@@ -75,7 +75,7 @@ with tab1:
         legend=dict(orientation='h', x=0.5, y=1.1, xanchor='center', yanchor='bottom'),
         margin=dict(t=20,b=0,l=0,r=0), height=60
     )
-    st.plotly_chart(legend_fig, use_container_width=True)
+    st.plotly_chart(legend_fig, use_container_width=True, key="legend_fig")
 
     # Plot per Area
     cols = st.columns(3)
@@ -103,7 +103,7 @@ with tab1:
                     xaxis=dict(categoryorder='array', categoryarray=row_order, showgrid=False, title=''),
                     yaxis=dict(visible=False), margin=dict(t=10,b=10,l=0,r=0), height=250
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"chart_{prefix}_{area}")
 
 with tab2:
     st.header("Fitur Lain: Plan Capacity Calculator")
