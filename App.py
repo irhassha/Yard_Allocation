@@ -124,49 +124,58 @@ with tab2:
     df_input = pd.DataFrame(columns=["Area","Slot","Height"])
     edited = st.data_editor(df_input, num_rows="dynamic", use_container_width=True, key='editor')
 
-    # Kalkulasi untuk setiap input
-multiplier = 6
-plan_rows = []
-for _, row in edited.iterrows():
-    area_text = (row.get("Area") or "").strip()
-    slot_text = (row.get("Slot") or "").strip()
-    # Parsing Height
-    try:
-        height = int(float(row.get("Height", 0)))
-    except:
-        height = 0
-    # List area
-    area_list = [a.strip() for a in area_text.split(',') if a.strip()]
-    num_areas = len(area_list)
-    # Parse slots
-    try:
-        start_slot, end_slot = [int(x) for x in slot_text.split('-')]
-        num_slots = abs(end_slot - start_slot) + 1
-        row_bays = [f"{area_text}-{num:02d}" for num in range(start_slot, end_slot+1)]
-    except:
-        num_slots = 0
-        row_bays = []
-    # Actual Stack dengan Unit length
-    df_match = df[(df['Area']==area_text) & (df['Row_Bay'].isin(row_bays))]
-    if 'Unit length' in df_match.columns:
+    # Kalkulasi
+    multiplier = 6
+    plan_rows = []
+    for _, row in edited.iterrows():
+        area_text = (row.get("Area") or "").strip()
+        slot_text = (row.get("Slot") or "").strip()
         try:
-            actual_stack = int((df_match['Unit length']/20).sum())
+            height = int(float(row.get("Height", 0)))
         except:
+            height = 0
+        area_list = [a.strip() for a in area_text.split(',') if a.strip()]
+        num_areas = len(area_list)
+        try:
+            start_slot, end_slot = [int(x) for x in slot_text.split('-')]
+            row_bays = [f"{area_text}-{num:02d}" for num in range(start_slot, end_slot+1)]
+            num_slots = len(row_bays)
+        except:
+            row_bays = []
+            num_slots = 0
+        df_match = df[(df['Area']==area_text) & (df['Row_Bay'].isin(row_bays))]
+        if 'Unit length' in df_match.columns:
+            try:
+                actual_stack = int((df_match['Unit length']/20).sum())
+            except:
+                actual_stack = df_match.shape[0]
+        else:
             actual_stack = df_match.shape[0]
-    else:
-        actual_stack = df_match.shape[0]
-    # Total Plan Capacity
-    total_plan_capacity = num_areas * num_slots * height * multiplier
-    plan_rows.append({
-        "Area": area_text,
-        "Slot": slot_text,
-        "Height": height,
-        "Num Areas": num_areas,
-        "Num Slots": num_slots,
-        "Total Plan Capacity": total_plan_capacity,
-        "Actual Stack": actual_stack
-    })
-# Buat DataFrame
-df_plan = pd.DataFrame(plan_rows)
+        total_plan_capacity = num_areas * num_slots * height * multiplier
+        plan_rows.append({
+            "Area": area_text,
+            "Slot": slot_text,
+            "Height": height,
+            "Num Areas": num_areas,
+            "Num Slots": num_slots,
+            "Total Plan Capacity": total_plan_capacity,
+            "Actual Stack": actual_stack
+        })
+    df_plan = pd.DataFrame(plan_rows)
     st.subheader("Summary Plan Capacity")
-    st.dataframe(df_plan, use_container_width=True)
+    st.dataframe(df_plan[["Area","Slot","Height","Total Plan Capacity","Actual Stack"]], use_container_width=True)
+
+    # Totals per column
+    total_areas = df_plan["Num Areas"].sum()
+    total_slots = df_plan["Num Slots"].sum()
+    total_capacity = df_plan["Total Plan Capacity"].sum()
+    total_actual = df_plan["Actual Stack"].sum()
+
+    st.subheader("Totals")
+    summary = {
+        "Total Areas": total_areas,
+        "Total Slots": total_slots,
+        "Total Plan Capacity": total_capacity,
+        "Total Actual Stack": total_actual
+    }
+    st.write(summary)
