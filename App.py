@@ -118,7 +118,44 @@ with tab2:
     )
 
     # Proses setiap baris input
-    rows = []
+df_plan_rows = []
+multiplier = 6
+for _, row in edited.iterrows():
+    area_text = row.get("Area", "")
+    slot_text = row.get("Slot", "")
+    # Konversi Height ke integer
+    raw_height = row.get("Height", 0)
+    try:
+        height = int(float(raw_height))
+    except:
+        height = 0
+    # Konversi Actual Stack ke integer
+    raw_actual = row.get("Actual Stack", 0)
+    try:
+        actual_stack = int(float(raw_actual))
+    except:
+        actual_stack = 0
+    # Hitung jumlah area
+    area_list = [a.strip() for a in area_text.split(',') if a.strip()]
+    num_areas = len(area_list)
+    # Hitung jumlah slot dari rentang
+    try:
+        start_slot, end_slot = [int(x) for x in slot_text.split("-")]
+        num_slots = abs(end_slot - start_slot) + 1
+    except:
+        num_slots = 0
+    # Total Plan Capacity
+    total_plan_capacity = num_areas * num_slots * height * multiplier
+    df_plan_rows.append({
+        "Area": area_text,
+        "Slot": slot_text,
+        "Height": height,
+        "Total Plan Capacity": total_plan_capacity,
+        "Actual Stack": actual_stack
+    })
+
+# Buat DataFrame hasil
+df_plan = pd.DataFrame(df_plan_rows)
     multiplier = 6
     for _, row in edited.iterrows():
         area_text = row.get("Area", "")
