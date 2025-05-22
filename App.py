@@ -42,6 +42,25 @@ sel_moves = st.sidebar.multiselect(
     "Tampilkan Move:", options=move_opts, default=['Export','Transhipment']
 )
 
+# --- Sidebar: Filter Arrival Date ---
+st.sidebar.markdown("## Filter Arrival Date")
+# Pastikan kolom Arrival date ada dan bertipe datetime
+df['Arrival date'] = pd.to_datetime(df['Arrival date'], errors='coerce')
+min_date = df['Arrival date'].dt.date.min()
+max_date = df['Arrival date'].dt.date.max()
+# Input rentang tanggal
+sel_dates = st.sidebar.date_input(
+    "Pilih rentang Arrival date:",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
+)
+# Filter berdasarkan rentang tanggal
+def in_date_range(d):
+    if pd.isna(d): return False
+    return sel_dates[0] <= d.date() <= sel_dates[1]
+df = df[df['Arrival date'].apply(in_date_range)]
+
 # --- Sidebar: Highlight Carrier ---
 valid_moves = ['Export','Transhipment']
 carriers = sorted(df[df['Move'].isin(valid_moves)]['Carrier Out'].unique())
@@ -62,6 +81,7 @@ carrier_color_map = {c: palette[i%len(palette)] for i,c in enumerate(carriers)}
 gray = '#555555'
 yellow = '#FFFF99'
 
+# Setelah filter Arrival date, lanjut Tabs: Dashboard & Fitur Lain
 # --- Tabs: Dashboard & Fitur Lain ---
 tab1, tab2 = st.tabs(["Dashboard", "Plan Capacity Calculator"])
 
