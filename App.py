@@ -111,7 +111,7 @@ with tab2:
     df_input = pd.DataFrame(
         columns=["Area", "Slot", "Height", "Actual Stack"]
     )
-    edited = st.experimental_data_editor(
+    edited = st.data_editor(
         df_input,
         num_rows="dynamic",
         use_container_width=True
