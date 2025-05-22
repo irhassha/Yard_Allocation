@@ -166,16 +166,15 @@ with tab2:
     st.dataframe(df_plan[["Area","Slot","Height","Total Plan Capacity","Actual Stack"]], use_container_width=True)
 
     # Totals per column
-    total_areas = df_plan["Num Areas"].sum()
-    total_slots = df_plan["Num Slots"].sum()
-    total_capacity = df_plan["Total Plan Capacity"].sum()
-    total_actual = df_plan["Actual Stack"].sum()
+    total_areas = int(df_plan["Num Areas"].sum())
+    total_slots = int(df_plan["Num Slots"].sum())
+    total_capacity = int(df_plan["Total Plan Capacity"].sum())
+    total_actual = int(df_plan["Actual Stack"].sum())
 
     st.subheader("Totals")
-    summary = {
-        "Total Areas": total_areas,
-        "Total Slots": total_slots,
-        "Total Plan Capacity": total_capacity,
-        "Total Actual Stack": total_actual
-    }
-    st.write(summary)
+    # Tampilkan sebagai tabel ringkasan
+    df_totals = pd.DataFrame({
+        "Metric": ["Total Areas", "Total Slots", "Total Plan Capacity", "Total Actual Stack"],
+        "Value": [total_areas, total_slots, total_capacity, total_actual]
+    })
+    st.table(df_totals)
