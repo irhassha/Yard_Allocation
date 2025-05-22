@@ -106,5 +106,34 @@ with tab1:
                 st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
-    st.header("Fitur Lain")
-    st.write("Placeholder untuk fitur tambahan di tab kedua.")
+    st.header("Fitur Lain: Plan Capacity Calculator")
+    # Form input untuk perhitungan
+    areas_input = st.text_input("Area (pisahkan dengan koma, misal: A01,A02,A03)", "A01,A02,A03")
+    slot_input = st.text_input("Slot (format mulai-akhir, misal: 20-25)", "20-25")
+    height_input = st.number_input("Height", min_value=1, value=4)
+    actual_stack_input = st.number_input("Actual Stack", min_value=0, value=0)
+
+    # Hitung jumlah area
+    areas_list = [a.strip() for a in areas_input.split(",") if a.strip()]
+    num_areas = len(areas_list)
+    # Hitung jumlah slot dari rentang
+    try:
+        start_slot, end_slot = [int(x) for x in slot_input.split("-")]
+        num_slots = abs(end_slot - start_slot) + 1
+    except:
+        num_slots = 0
+    # Default multiplier
+    multiplier = 6
+    # Total Plan Capacity
+    total_plan_capacity = num_areas * num_slots * height_input * multiplier
+
+    # Buat DataFrame untuk ditampilkan
+    df_plan = pd.DataFrame({
+        "Area": [",".join(areas_list)],
+        "Slot": [slot_input],
+        "Height": [height_input],
+        "Total Plan Capacity": [total_plan_capacity],
+        "Actual Stack": [actual_stack_input]
+    })
+    st.subheader("Summary Plan Capacity")
+    st.dataframe(df_plan)
