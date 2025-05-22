@@ -130,27 +130,36 @@ with tab2:
     for _, row in edited.iterrows():
         area_text = (row.get("Area") or "").strip()
         slot_text = (row.get("Slot") or "").strip()
+        # Parsing Height
         try:
             height = int(float(row.get("Height", 0)))
         except:
             height = 0
+        # Daftar area jika multiple
         area_list = [a.strip() for a in area_text.split(',') if a.strip()]
         num_areas = len(area_list)
+        # Parsing slot range
         try:
             start_slot, end_slot = [int(x) for x in slot_text.split('-')]
-            row_bays = [f"{area_text}-{num:02d}" for num in range(start_slot, end_slot+1)]
+            # Buat semua Row_Bay untuk setiap area
+            row_bays = []
+            for a in area_list:
+                for num in range(start_slot, end_slot+1):
+                    row_bays.append(f"{a}-{num:02d}")
             num_slots = len(row_bays)
         except:
             row_bays = []
             num_slots = 0
-        df_match = df[(df['Area']==area_text) & (df['Row_Bay'].isin(row_bays))]
+        # Hitung Actual Stack berdasarkan Unit length per Row_Bay per Area
+        df_match = df[df['Area'].isin(area_list) & df['Row_Bay'].isin(row_bays)]
         if 'Unit length' in df_match.columns:
             try:
-                actual_stack = int((df_match['Unit length']/20).sum())
+                actual_stack = int((df_match['Unit length'] / 20).sum())
             except:
                 actual_stack = df_match.shape[0]
         else:
             actual_stack = df_match.shape[0]
+        # Hitung Total Plan Capacity
         total_plan_capacity = num_areas * num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
