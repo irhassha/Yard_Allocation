@@ -180,7 +180,7 @@ with tab2:
         else:
             actual_stack = df_match.shape[0]
         # Hitung Total Plan Capacity
-        total_plan_capacity = num_areas * num_slots * height * multiplier
+        total_plan_capacity = num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
