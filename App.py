@@ -203,7 +203,19 @@ with tab2:
     st.subheader("Totals")
     # Tampilkan sebagai tabel ringkasan
     df_totals = pd.DataFrame({
-        "Metric": ["Total Areas", "Total Slots", "Total Plan Capacity", "Total Actual Stack"],
-        "Value": [total_areas, total_slots, total_capacity, total_actual]
+        "Metric": [
+            "Total Areas", 
+            "Total Slots", 
+            "Total Plan Capacity", 
+            "Total Actual Stack",
+            "Balance Capacity"
+        ],
+        "Value": [
+            total_areas,
+            total_slots,
+            total_capacity,
+            total_actual,
+            total_capacity - total_actual
+        ]
     })
     st.table(df_totals)
