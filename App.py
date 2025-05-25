@@ -239,12 +239,7 @@ with tab3:
         )
         # Filter hanya Import dan Carrier In terpilih
         df_ci = df_import[df_import['Carrier In'].isin(selected_ci)]
-        rows = df_ci[['Carrier In','Row_Bay']].drop_duplicates()
-        if rows.empty:
-            st.info("Tidak ada data untuk Carrier In terpilih (Import).")
-        else:
-            df_list = rows.groupby('Carrier In')['Row_Bay']\
-                          .apply(lambda x: ', '.join(sorted(x)))\
-                          .reset_index()
-            st.subheader("List Row_Bay per Carrier In (Import)")
-            st.dataframe(df_list, use_container_width=True)
+        # Hitung jumlah kemunculan setiap Row_Bay per Carrier In
+        df_counts = df_ci.groupby(['Carrier In','Row_Bay']).size().reset_index(name='Count')
+        st.subheader("Jumlah Unit per Row_Bay per Carrier In")
+        st.dataframe(df_counts, use_container_width=True)
