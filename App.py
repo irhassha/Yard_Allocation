@@ -151,7 +151,7 @@ with tab2:
         else:
             actual_stack = df_match.shape[0]
         # Total Plan Capacity
-        total_plan_capacity = num_areas * num_slots * height * multiplier
+        total_plan_capacity = num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
@@ -161,7 +161,17 @@ with tab2:
         })
     df_plan = pd.DataFrame(plan_rows)
     st.subheader("Summary Plan Capacity")
-    st.dataframe(df_plan, use_container_width=True)
+    # Center-align Summary Plan Capacity
+    df_plan_display = df_plan.copy()
+    df_plan_display['Total Plan Capacity'] = df_plan_display['Total Plan Capacity'].astype(float)
+    df_plan_display['Actual Stack'] = df_plan_display['Actual Stack'].astype(float)
+    styled_plan = df_plan_display.style.format({
+        'Total Plan Capacity': '{:.2f}',
+        'Actual Stack': '{:.2f}'
+    }).set_properties(**{'text-align':'center'}).set_table_styles([
+        {'selector':'th','props':[('text-align','center')]}
+    ])
+    st.dataframe(styled_plan, use_container_width=True)
 
     # --- Incoming Vessel Discharge Section ---
     st.subheader("Incoming Vessel Discharge")
@@ -189,7 +199,14 @@ with tab2:
             "Total TEUs": total_teus
         })
     df_vessel_summary = pd.DataFrame(vessel_rows)
-    st.table(df_vessel_summary)
+    # Vessel Discharge Summary center-aligned and formatted
+    df_vessel_summary[['Total Boxes','Total TEUs']] = df_vessel_summary[['Total Boxes','Total TEUs']].astype(float)
+    styled_vessel = df_vessel_summary.style.format({
+        'Total Boxes': '{:.2f}', 'Total TEUs': '{:.2f}'
+    }).set_properties(**{'text-align':'center'}).set_table_styles([
+        {'selector':'th','props':[('text-align','center')]}
+    ])
+    st.dataframe(styled_vessel, use_container_width=True)
 
     # Totals including Balance Capacity
     total_areas = sum(len(str(r['Area']).split(',')) for r in plan_rows)
@@ -221,4 +238,11 @@ with tab2:
         ]
     })
     st.subheader("Totals")
-    st.table(df_totals)
+    # Totals table with decimal formatting & center alignment
+    df_totals['Value'] = df_totals['Value'].astype(float)
+    styled_totals = df_totals.style.format({
+        'Value': '{:.2f}'
+    }).set_properties(**{'text-align':'center'}).set_table_styles([
+        {'selector':'th','props':[('text-align','center')]}
+    ])
+    st.dataframe(styled_totals, use_container_width=True)
