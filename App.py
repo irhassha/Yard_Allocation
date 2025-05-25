@@ -151,7 +151,7 @@ with tab2:
         else:
             actual_stack = df_match.shape[0]
         # Total Plan Capacity
-        total_plan_capacity = num_slots * height * multiplier
+        total_plan_capacity = num_areas * num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
@@ -199,7 +199,7 @@ with tab2:
     balance = total_capacity - total_actual
     # Hitung Total Incoming Discharge Volume jika ada
     try:
-        total_incoming = float(df_vessel_summary['Total TEUs'].sum())
+        total_incoming = int(df_vessel_summary['Total TEUs'].sum())
     except:
         total_incoming = 0
     df_totals = pd.DataFrame({
@@ -222,33 +222,3 @@ with tab2:
     })
     st.subheader("Totals")
     st.table(df_totals)
-
-    # --- Incoming Vessel Discharge Section ---
-    st.subheader("Incoming Vessel Discharge")
-    # Editable table for vessel discharge input
-    df_vessel = pd.DataFrame(columns=["Vessel Name", "20ft", "40ft", "45ft"])
-    edited_vessel = st.data_editor(
-        df_vessel,
-        num_rows="dynamic",
-        use_container_width=True,
-        key='vessel_editor'
-    )
-    # Calculate vessel metrics
-    vessel_rows = []
-    for _, vr in edited_vessel.iterrows():
-        name = vr.get("Vessel Name") or ""
-        c20 = int(vr.get("20ft") or 0)
-        c40 = int(vr.get("40ft") or 0)
-        c45 = int(vr.get("45ft") or 0)
-        total_boxes = c20 + c40 + c45
-        total_teus = c20 + (c40 * 2) + (c45 * 2.25)
-        vessel_rows.append({
-            "Vessel Name": name,
-            "20ft": c20,
-            "40ft": c40,
-            "45ft": c45,
-            "Total Boxes": total_boxes,
-            "Total TEUs": total_teus
-        })
-    df_vessel_summary = pd.DataFrame(vessel_rows)
-    st.table(df_vessel_summary)
