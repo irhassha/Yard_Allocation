@@ -266,3 +266,12 @@ with tab3:
                                   {'selector':'th','props':[('text-align','center')]},
                                   {'selector':'td','props':[('text-align','center')]}])
             st.dataframe(styled, use_container_width=True)
+            # Summary Remark counts berdasarkan kolom Count
+            plan_count = int(df_counts.loc[df_counts['Remark']=='PLAN', 'Count'].sum())
+            blank_count = int(df_counts.loc[df_counts['Remark']=='', 'Count'].sum())
+            df_remark_summary = pd.DataFrame({
+                'Remark': ['PLAN', ''],
+                'Count': [plan_count, blank_count]
+            })
+            st.subheader("Summary Remark")
+            st.table(df_remark_summary)
