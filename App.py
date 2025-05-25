@@ -169,9 +169,28 @@ with tab2:
     total_capacity = int(df_plan['Total Plan Capacity'].sum())
     total_actual = int(df_plan['Actual Stack'].sum())
     balance = total_capacity - total_actual
+    # Hitung Total Incoming Discharge Volume jika ada
+    try:
+        total_incoming = float(df_vessel_summary['Total TEUs'].sum())
+    except:
+        total_incoming = 0
     df_totals = pd.DataFrame({
-        "Metric": ["Total Areas", "Total Slots", "Total Plan Capacity", "Total Actual Stack", "Balance Capacity"],
-        "Value": [total_areas, total_slots, total_capacity, total_actual, balance]
+        "Metric": [
+            "Total Areas", 
+            "Total Slots", 
+            "Total Plan Capacity", 
+            "Total Actual Stack", 
+            "Balance Capacity",
+            "Total Incoming Discharge Volume (TEUs)"
+        ],
+        "Value": [
+            total_areas,
+            total_slots,
+            total_capacity,
+            total_actual,
+            balance,
+            total_incoming
+        ]
     })
     st.subheader("Totals")
     st.table(df_totals)
@@ -194,7 +213,7 @@ with tab2:
         c40 = int(vr.get("40ft") or 0)
         c45 = int(vr.get("45ft") or 0)
         total_boxes = c20 + c40 + c45
-        total_teus = c20 + c40 * 2 + c45 * 2.25
+        total_teus = c20 + (c40 * 2) + (c45 * 2.25)
         vessel_rows.append({
             "Vessel Name": name,
             "20ft": c20,
