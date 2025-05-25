@@ -63,7 +63,7 @@ gray = '#555555'
 yellow = '#FFFF99'
 
 # --- Tabs: Dashboard & Plan Capacity Calculator ---
-tab1, tab2 = st.tabs(["Dashboard", "Plan Capacity Calculator"])
+tab1, tab2, tab3 = st.tabs(["Dashboard", "Plan Capacity Calculator", "Accuracy Plan Vs Actual"])
 
 with tab1:
     # Global Legend
