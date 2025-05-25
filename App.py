@@ -119,21 +119,27 @@ with tab2:
         df_input, num_rows="dynamic", use_container_width=True, key='editor'
     )
 
+    # --- Incoming Vessel Discharge Input ---
+    st.subheader("Incoming Vessel Discharge Input")
+    df_vessel = pd.DataFrame(columns=["Vessel Name", "20ft", "40ft", "45ft"])
+    edited_vessel = st.data_editor(
+        df_vessel,
+        num_rows="dynamic",
+        use_container_width=True,
+        key='vessel_editor'
+    )
+
     # Kalkulasi Plan Capacity
     multiplier = 6
     plan_rows = []
     for _, row in edited.iterrows():
         area_text = (row.get("Area") or "").strip()
         slot_text = (row.get("Slot") or "").strip()
-        # Height
         try:
             height = int(float(row.get("Height", 0)))
         except:
             height = 0
-        # Area list
         area_list = [a.strip() for a in area_text.split(',') if a.strip()]
-        num_areas = len(area_list)
-        # Slot range to row_bays
         try:
             start_slot, end_slot = [int(x) for x in slot_text.split('-')]
             row_bays = [f"{a}-{num:02d}" for a in area_list for num in range(start_slot, end_slot+1)]
@@ -141,7 +147,6 @@ with tab2:
         except:
             row_bays = []
             num_slots = 0
-        # Actual Stack with unit length logic
         df_match = df[df['Area'].isin(area_list) & df['Row_Bay'].isin(row_bays)]
         if 'Unit length' in df_match.columns:
             try:
@@ -150,8 +155,7 @@ with tab2:
                 actual_stack = df_match.shape[0]
         else:
             actual_stack = df_match.shape[0]
-        # Total Plan Capacity
-        total_plan_capacity = num_slots * height * multiplier
+        total_plan_capacity = len(area_list) * num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
@@ -160,92 +164,60 @@ with tab2:
             "Actual Stack": actual_stack
         })
     df_plan = pd.DataFrame(plan_rows)
+
+    # Summary Plan Capacity
     st.subheader("Summary Plan Capacity")
-    # Center-align Summary Plan Capacity
-    df_plan_display = df_plan.copy()
-    df_plan_display['Total Plan Capacity'] = df_plan_display['Total Plan Capacity'].astype(float)
-    df_plan_display['Actual Stack'] = df_plan_display['Actual Stack'].astype(float)
-    styled_plan = df_plan_display.style.format({
+    df_plan[['Total Plan Capacity','Actual Stack']] = df_plan[['Total Plan Capacity','Actual Stack']].astype(float)
+    styled_plan = df_plan.style.format({
         'Total Plan Capacity': '{:.0f}',
         'Actual Stack': '{:.0f}'
     }).set_properties(**{'text-align':'center'}).set_table_styles([
         {'selector':'th','props':[('text-align','center')]},
-        {'selector':'td','props':[('text-align','center')]}
-    ])
+        {'selector':'td','props':[('text-align','center')]}]
+    )
     st.dataframe(styled_plan, use_container_width=True)
 
-    # --- Incoming Vessel Discharge Section ---
+    # Summary Incoming Vessel Discharge
     st.subheader("Incoming Vessel Discharge")
-    df_vessel = pd.DataFrame(columns=["Vessel Name", "20ft", "40ft", "45ft"])
-    edited_vessel = st.data_editor(
-        df_vessel,
-        num_rows="dynamic",
-        use_container_width=True,
-        key='vessel_editor'
+    df_vessel_summary = pd.DataFrame([
+        {
+            'Vessel Name': vr.get('Vessel Name') or '',
+            '20ft': int(vr.get('20ft') or 0),
+            '40ft': int(vr.get('40ft') or 0),
+            '45ft': int(vr.get('45ft') or 0)
+        }
+        for _, vr in edited_vessel.iterrows()
+    ])
+    df_vessel_summary['Total Boxes'] = df_vessel_summary[['20ft','40ft','45ft']].sum(axis=1)
+    df_vessel_summary['Total TEUs'] = (
+        df_vessel_summary['20ft'] + df_vessel_summary['40ft']*2 + df_vessel_summary['45ft']*2.25
     )
-    vessel_rows = []
-    for _, vr in edited_vessel.iterrows():
-        name = vr.get("Vessel Name") or ""
-        c20 = int(vr.get("20ft") or 0)
-        c40 = int(vr.get("40ft") or 0)
-        c45 = int(vr.get("45ft") or 0)
-        total_boxes = c20 + c40 + c45
-        total_teus = c20 + (c40 * 2) + (c45 * 2.25)
-        vessel_rows.append({
-            "Vessel Name": name,
-            "20ft": c20,
-            "40ft": c40,
-            "45ft": c45,
-            "Total Boxes": total_boxes,
-            "Total TEUs": total_teus
-        })
-    df_vessel_summary = pd.DataFrame(vessel_rows)
-    # Vessel Discharge Summary center-aligned and formatted
-    df_vessel_summary[['Total Boxes','Total TEUs']] = df_vessel_summary[['Total Boxes','Total TEUs']].astype(float)
+    df_vessel_summary[['20ft','40ft','45ft','Total Boxes','Total TEUs']] = df_vessel_summary[['20ft','40ft','45ft','Total Boxes','Total TEUs']].astype(float)
     styled_vessel = df_vessel_summary.style.format({
-        'Total Boxes': '{:.0f}', 'Total TEUs': '{:.0f}'
+        '20ft':'{:.0f}','40ft':'{:.0f}','45ft':'{:.0f}','Total Boxes':'{:.0f}','Total TEUs':'{:.0f}'
     }).set_properties(**{'text-align':'center'}).set_table_styles([
         {'selector':'th','props':[('text-align','center')]},
-        {'selector':'td','props':[('text-align','center')]}
-    ])
+        {'selector':'td','props':[('text-align','center')]}]
+    )
     st.dataframe(styled_vessel, use_container_width=True)
 
-    # Totals including Balance Capacity
-    total_areas = sum(len(str(r['Area']).split(',')) for r in plan_rows)
-    total_slots = sum(int(r['Slot'].split('-')[1]) - int(r['Slot'].split('-')[0]) + 1 for r in plan_rows)
+    # Totals including Balance Capacity and Incoming Volume
+    total_areas = sum(len(a.split(',')) for a in df_plan['Area'])
+    total_slots = sum(int(s.split('-')[1])-int(s.split('-')[0])+1 for s in df_plan['Slot'])
     total_capacity = int(df_plan['Total Plan Capacity'].sum())
     total_actual = int(df_plan['Actual Stack'].sum())
     balance = total_capacity - total_actual
-    # Hitung Total Incoming Discharge Volume jika ada
-    try:
-        total_incoming = int(df_vessel_summary['Total TEUs'].sum())
-    except:
-        total_incoming = 0
+    total_incoming = int(df_vessel_summary['Total TEUs'].sum()) if not df_vessel_summary.empty else 0
     df_totals = pd.DataFrame({
-        "Metric": [
-            "Total Areas", 
-            "Total Slots", 
-            "Total Plan Capacity", 
-            "Total Actual Stack", 
-            "Balance Capacity",
-            "Total Incoming Discharge Volume (TEUs)"
+        'Metric': [
+            'Total Areas','Total Slots','Total Plan Capacity','Total Actual Stack','Balance Capacity','Total Incoming Discharge Volume (TEUs)'
         ],
-        "Value": [
-            total_areas,
-            total_slots,
-            total_capacity,
-            total_actual,
-            balance,
-            total_incoming
-        ]
+        'Value': [total_areas,total_slots,total_capacity,total_actual,balance,total_incoming]
     })
-    st.subheader("Totals")
-    # Totals table with decimal formatting & center alignment
     df_totals['Value'] = df_totals['Value'].astype(float)
-    styled_totals = df_totals.style.format({
-        'Value': '{:.0f}'
-    }).set_properties(**{'text-align':'center'}).set_table_styles([
+    styled_totals = df_totals.style.format({'Value':'{:.0f}'}).set_properties(**{'text-align':'center'}).set_table_styles([
         {'selector':'th','props':[('text-align','center')]},
-        {'selector':'td','props':[('text-align','center')]}
-    ])
+        {'selector':'td','props':[('text-align','center')]}]
+    )
+    st.subheader("Totals")
     st.dataframe(styled_totals, use_container_width=True)
