@@ -166,10 +166,11 @@ with tab2:
     df_plan_display['Total Plan Capacity'] = df_plan_display['Total Plan Capacity'].astype(float)
     df_plan_display['Actual Stack'] = df_plan_display['Actual Stack'].astype(float)
     styled_plan = df_plan_display.style.format({
-        'Total Plan Capacity': '{:.2f}',
-        'Actual Stack': '{:.2f}'
+        'Total Plan Capacity': '{:.0f}',
+        'Actual Stack': '{:.0f}'
     }).set_properties(**{'text-align':'center'}).set_table_styles([
-        {'selector':'th','props':[('text-align','center')]}
+        {'selector':'th','props':[('text-align','center')]},
+        {'selector':'td','props':[('text-align','center')]}
     ])
     st.dataframe(styled_plan, use_container_width=True)
 
@@ -202,9 +203,10 @@ with tab2:
     # Vessel Discharge Summary center-aligned and formatted
     df_vessel_summary[['Total Boxes','Total TEUs']] = df_vessel_summary[['Total Boxes','Total TEUs']].astype(float)
     styled_vessel = df_vessel_summary.style.format({
-        'Total Boxes': '{:.2f}', 'Total TEUs': '{:.2f}'
+        'Total Boxes': '{:.0f}', 'Total TEUs': '{:.0f}'
     }).set_properties(**{'text-align':'center'}).set_table_styles([
-        {'selector':'th','props':[('text-align','center')]}
+        {'selector':'th','props':[('text-align','center')]},
+        {'selector':'td','props':[('text-align','center')]}
     ])
     st.dataframe(styled_vessel, use_container_width=True)
 
@@ -241,8 +243,9 @@ with tab2:
     # Totals table with decimal formatting & center alignment
     df_totals['Value'] = df_totals['Value'].astype(float)
     styled_totals = df_totals.style.format({
-        'Value': '{:.2f}'
+        'Value': '{:.0f}'
     }).set_properties(**{'text-align':'center'}).set_table_styles([
-        {'selector':'th','props':[('text-align','center')]}
+        {'selector':'th','props':[('text-align','center')]},
+        {'selector':'td','props':[('text-align','center')]}
     ])
     st.dataframe(styled_totals, use_container_width=True)
