@@ -224,3 +224,20 @@ with tab2:
     )
     st.subheader("Totals")
     st.dataframe(styled_totals, use_container_width=True)
+
+# --- Tab 3: Accuracy Plan Vs Actual ---
+with tab3:
+    st.header("Accuracy Plan Vs Actual")
+    if 'Carrier In' not in df.columns:
+        st.warning("Kolom 'Carrier In' tidak ditemukan di data.")
+    else:
+        cis = sorted(df['Carrier In'].dropna().unique())
+        selected_ci = st.multiselect("Pilih Carrier In:", options=cis, default=cis)
+        df_ci = df[df['Carrier In'].isin(selected_ci)]
+        rows = df_ci[['Carrier In','Row_Bay']].drop_duplicates()
+        if rows.empty:
+            st.info("Tidak ada data untuk Carrier In terpilih.")
+        else:
+            df_list = rows.groupby('Carrier In')['Row_Bay'].apply(lambda x: ', '.join(sorted(x))).reset_index()
+            st.subheader("List Row_Bay per Carrier In")
+            st.dataframe(df_list, use_container_width=True)
