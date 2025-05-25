@@ -231,13 +231,20 @@ with tab3:
     if 'Carrier In' not in df.columns:
         st.warning("Kolom 'Carrier In' tidak ditemukan di data.")
     else:
-        cis = sorted(df['Carrier In'].dropna().unique())
-        selected_ci = st.multiselect("Pilih Carrier In:", options=cis, default=cis)
-        df_ci = df[df['Carrier In'].isin(selected_ci)]
+        # Hanya Carrier In pada Move Import
+        df_import = df[df['Move']=='Import']
+        cis = sorted(df_import['Carrier In'].dropna().unique())
+        selected_ci = st.multiselect(
+            "Pilih Carrier In (Import saja):", options=cis, default=cis
+        )
+        # Filter hanya Import dan Carrier In terpilih
+        df_ci = df_import[df_import['Carrier In'].isin(selected_ci)]
         rows = df_ci[['Carrier In','Row_Bay']].drop_duplicates()
         if rows.empty:
-            st.info("Tidak ada data untuk Carrier In terpilih.")
+            st.info("Tidak ada data untuk Carrier In terpilih (Import).")
         else:
-            df_list = rows.groupby('Carrier In')['Row_Bay'].apply(lambda x: ', '.join(sorted(x))).reset_index()
-            st.subheader("List Row_Bay per Carrier In")
+            df_list = rows.groupby('Carrier In')['Row_Bay']\
+                          .apply(lambda x: ', '.join(sorted(x)))\
+                          .reset_index()
+            st.subheader("List Row_Bay per Carrier In (Import)")
             st.dataframe(df_list, use_container_width=True)
