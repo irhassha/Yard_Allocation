@@ -240,19 +240,29 @@ with tab3:
         # Filter hanya Import dan Carrier In terpilih
         df_ci = df_import[df_import['Carrier In'].isin(selected_ci)]
         # Hitung jumlah kemunculan setiap Row_Bay per Carrier In
-        # Hitung jumlah kemunculan setiap Row_Bay per Carrier In
-df_counts = df_ci.groupby(['Carrier In','Row_Bay']).size().reset_index(name='Count')
-# Highlight Row_Bay sesuai input Plan Capacity
-# Kumpulkan semua Row_Bay dari df_plan
-highlight_set = set()
-for _, pr in df_plan.iterrows():
-    area_list = [a.strip() for a in pr['Area'].split(',')]
-    try:
-        start_slot, end_slot = [int(x) for x in pr['Slot'].split('-')]
-    except:
-        continue
-    for a in area_list:
-        for num in range(start_slot, end_slot+1):
-            highlight_set.add(f"{a}-{num:02d}")
-        st.subheader("Jumlah Unit per Row_Bay per Carrier In")
-        st.dataframe(df_counts, use_container_width=True)
+        df_counts = df_ci.groupby(['Carrier In','Row_Bay']).size().reset_index(name='Count')
+        # Buat set Row_Bay dari plan capacity untuk remark
+        highlight_set = set()
+        for _, pr in df_plan.iterrows():
+            area_list = [a.strip() for a in pr['Area'].split(',')]
+            try:
+                start_slot, end_slot = [int(x) for x in pr['Slot'].split('-')]
+            except:
+                continue
+            for a in area_list:
+                for num in range(start_slot, end_slot+1):
+                    highlight_set.add(f"{a}-{num:02d}")
+        # Tambahkan kolom Remark
+        if not df_counts.empty:
+            df_counts['Remark'] = df_counts['Row_Bay'].apply(lambda x: 'PLAN' if x in highlight_set else '')
+        # Tampilkan
+        if df_counts.empty:
+            st.info("Tidak ada data untuk Carrier In terpilih (Import).")
+        else:
+            st.subheader("Jumlah Unit per Row_Bay per Carrier In")
+            # Center align
+            styled = df_counts.style.set_properties(**{'text-align':'center'})\
+                              .set_table_styles([
+                                  {'selector':'th','props':[('text-align','center')]},
+                                  {'selector':'td','props':[('text-align','center')]}])
+            st.dataframe(styled, use_container_width=True)
