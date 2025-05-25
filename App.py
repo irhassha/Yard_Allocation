@@ -167,15 +167,18 @@ with tab2:
 
     # Summary Plan Capacity
     st.subheader("Summary Plan Capacity")
-    df_plan[['Total Plan Capacity','Actual Stack']] = df_plan[['Total Plan Capacity','Actual Stack']].astype(float)
-    styled_plan = df_plan.style.format({
-        'Total Plan Capacity': '{:.0f}',
-        'Actual Stack': '{:.0f}'
-    }).set_properties(**{'text-align':'center'}).set_table_styles([
-        {'selector':'th','props':[('text-align','center')]},
-        {'selector':'td','props':[('text-align','center')]}]
-    )
-    st.dataframe(styled_plan, use_container_width=True)
+    if df_plan.empty:
+        st.info("Tidak ada data Plan Capacity.")
+    else:
+        df_plan[['Total Plan Capacity','Actual Stack']] = df_plan[['Total Plan Capacity','Actual Stack']].astype(float)
+        styled_plan = df_plan.style.format({
+            'Total Plan Capacity': '{:.0f}',
+            'Actual Stack': '{:.0f}'
+        }).set_properties(**{'text-align':'center'}).set_table_styles([
+            {'selector':'th','props':[('text-align','center')]},
+            {'selector':'td','props':[('text-align','center')]}]
+        )
+        st.dataframe(styled_plan, use_container_width=True)
 
     # Summary Incoming Vessel Discharge
     st.subheader("Incoming Vessel Discharge")
