@@ -155,7 +155,7 @@ with tab2:
                 actual_stack = df_match.shape[0]
         else:
             actual_stack = df_match.shape[0]
-        total_plan_capacity = len(area_list) * num_slots * height * multiplier
+        total_plan_capacity = num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
