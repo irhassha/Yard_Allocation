@@ -42,6 +42,32 @@ sel_moves = st.sidebar.multiselect(
     "Tampilkan Move:", options=move_opts, default=['Export','Transhipment']
 )
 
+# --- Sidebar: Filter Arrival Date ---
+st.sidebar.markdown("## Filter Arrival Date")
+# Pastikan kolom Arrival date ada dan di-parse ke datetime
+df['Arrival date'] = pd.to_datetime(df['Arrival date'], errors='coerce')
+min_date = df['Arrival date'].dt.date.min()
+max_date = df['Arrival date'].dt.date.max()
+# Pilih rentang tanggal
+tgl_awal, tgl_akhir = st.sidebar.date_input(
+    "Pilih rentang Arrival date:",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date
+)
+# Filter data berdasarkan tanggal arrival
+if isinstance(tgl_awal, tuple):
+    start_date, end_date = tgl_awal
+else:
+    start_date, end_date = tgl_awal, tgl_akhir
+
+def in_date_range(d):
+    if pd.isna(d): return False
+    return start_date <= d.date() <= end_date
+
+df = df[df['Arrival date'].apply(in_date_range)]
+
+
 # --- Sidebar: Highlight Carrier ---
 valid_moves = ['Export','Transhipment']
 carriers = sorted(df[df['Move'].isin(valid_moves)]['Carrier Out'].unique())
@@ -155,7 +181,7 @@ with tab2:
                 actual_stack = df_match.shape[0]
         else:
             actual_stack = df_match.shape[0]
-        total_plan_capacity = num_slots * height * multiplier
+        total_plan_capacity = len(area_list) * num_slots * height * multiplier
         plan_rows.append({
             "Area": area_text,
             "Slot": slot_text,
