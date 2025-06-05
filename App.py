@@ -89,7 +89,7 @@ gray = '#555555'
 yellow = '#FFFF99'
 
 # --- Tabs: Dashboard & Plan Capacity Calculator ---
-tab1, tab2, tab3 = st.tabs(["Dashboard", "Plan Capacity Calculator", "Accuracy Plan Vs Actual"])
+tab1, tab2, tab3, tab4 = st.tabs(["Dashboard", "Plan Capacity Calculator", "Accuracy Plan Vs Actual", "User Feedback"])
 
 with tab1:
     # Global Legend
@@ -286,7 +286,6 @@ with tab3:
             st.info("Tidak ada data untuk Carrier In terpilih (Import).")
         else:
             st.subheader("Jumlah Unit per Row_Bay per Carrier In")
-            # Center align
             styled = df_counts.style.set_properties(**{'text-align':'center'})\
                               .set_table_styles([
                                   {'selector':'th','props':[('text-align','center')]},
@@ -301,3 +300,43 @@ with tab3:
             })
             st.subheader("Summary Remark")
             st.table(df_remark_summary)
+
+# --- Tab 4: User Feedback & File Comparison ---
+with tab4:
+    st.header("User Feedback & File Comparison")
+    # Upload second file untuk compare
+    st.subheader("Upload File untuk Compare")
+    uploaded_file2 = st.file_uploader("Pilih file kedua (.xlsx/.xls) untuk perbandingan:", type=["xlsx","xls"], key="file2")
+    if uploaded_file2:
+        try:
+            df2 = pd.read_excel(uploaded_file2)
+        except Exception as e:
+            st.error(f"Gagal membaca file kedua: {e}")
+            df2 = None
+        if df2 is not None:
+            if 'Service' not in df2.columns:
+                st.error("File kedua harus mengandung kolom 'Service'.")
+            else:
+                # Tampilkan daftar Service dan filter
+                services = sorted(df2['Service'].dropna().unique())
+                selected_services = st.multiselect("Pilih Service untuk ditampilkan:", options=services, default=services)
+                df2_filtered = df2[df2['Service'].isin(selected_services)]
+                # Tambahkan kolom Actual Service berdasarkan file pertama (df)
+                # Ambil kolom Service dari file pertama sebagai mapping Service Aktual
+                if 'Row_Bay' in df.columns and 'Service' in df.columns:
+                    df_map = df[['Row_Bay','Service']].drop_duplicates().rename(columns={'Service':'Actual Service'})
+                    df2_filtered = df2_filtered.merge(df_map, on='Row_Bay', how='left')
+                else:
+                    df2_filtered['Actual Service'] = ''
+
+                st.subheader("Preview Data File Kedua (Filter Service)")
+                st.dataframe(df2_filtered, use_container_width=True)
+                # Di sini dapat ditambahkan logika perbandingan lebih lanjut
+    # Feedback section
+    st.subheader("User Feedback")
+    feedback = st.text_area("Tulis feedback di sini:")
+    if st.button("Kirim Feedback", key="btn_feedback"):
+        if feedback.strip():
+            st.success("Terima kasih atas feedback Anda!")
+        else:
+            st.warning("Silakan tulis feedback sebelum mengirim.")
